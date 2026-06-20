@@ -5,6 +5,14 @@ import { fileURLToPath } from "node:url";
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        hostname: "s.mxmcdn.net",
+        protocol: "https",
+      },
+    ],
+  },
   turbopack: {
     root: projectRoot,
   },
