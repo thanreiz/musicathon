@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="relative flex min-h-screen items-center overflow-hidden bg-[#120913] px-6 py-16 text-[#fff8eb] sm:px-10 lg:px-16">
@@ -15,12 +17,12 @@ export default function Home() {
         </div>
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <button
-            type="button"
+          <Link
+            href="/search"
             className="inline-flex h-12 items-center justify-center rounded-full bg-[#ffb84d] px-7 text-sm font-bold uppercase tracking-wide text-[#1a0b10] shadow-[0_14px_40px_rgba(255,184,77,0.28)] transition hover:bg-[#ffd166] focus:outline-none focus:ring-2 focus:ring-[#ffcf66] focus:ring-offset-2 focus:ring-offset-[#120913]"
           >
             Search a song
-          </button>
+          </Link>
           <a
             href="#"
             className="inline-flex h-12 items-center justify-center rounded-full border border-[#ffcf66]/35 px-7 text-sm font-bold uppercase tracking-wide text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10 focus:outline-none focus:ring-2 focus:ring-[#ffcf66] focus:ring-offset-2 focus:ring-offset-[#120913]"
