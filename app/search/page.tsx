@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import GeneratedCover from "@/components/GeneratedCover";
 import type { TrackMetadata } from "@/lib/types";
 
 type SearchResponse = {
@@ -182,12 +183,12 @@ function TrackArtwork({
 }) {
   if (!track.coverArtUrl) {
     return (
-      <div
-        className="grid place-items-center rounded-2xl bg-[#ffb84d]/15 text-xl font-black text-[#ffcf66]"
-        style={{ height: size, width: size }}
-      >
-        {track.title.slice(0, 1).toUpperCase()}
-      </div>
+      <GeneratedCover
+        title={track.title}
+        artist={track.artist}
+        size={size}
+        className="rounded-2xl"
+      />
     );
   }
 
