@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,8 +13,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Myusika",
-  description: "Search a song. Sing it. Play it.",
+  title: "Myusika — Filipino Karaoke",
+  description:
+    "Search a song, strip the vocals, and sing it karaoke-style with time-synced lyrics. A Filipino-culture videoke web app.",
+  openGraph: {
+    title: "Myusika — Filipino Karaoke",
+    description:
+      "Search a song, strip the vocals, and sing it karaoke-style with time-synced lyrics.",
+    type: "website",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0c060d",
 };
 
 export default function RootLayout({

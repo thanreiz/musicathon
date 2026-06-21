@@ -83,6 +83,7 @@ export default function KaraokePlayer({
   const [playbackStatus, setPlaybackStatus] = useState<"before" | "during" | "after">("before");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isInstrumentalBreak, setIsInstrumentalBreak] = useState(false);
+  const [audioError, setAudioError] = useState(false);
   // Index of the word currently being sung within the active line (-1 = none
   // started yet). Drives the per-word highlight.
   const [activeWord, setActiveWord] = useState(-1);
@@ -396,6 +397,18 @@ export default function KaraokePlayer({
 
       {/* ── Dark Gradient Legibility Overlay (z-index 10) ────────────────── */}
       <div className="absolute inset-0 z-10 h-full w-full bg-gradient-to-b from-black/50 via-black/30 to-black/85" />
+
+      {/* ── Audio failure banner (z-index 40) ────────────────────────────── */}
+      {audioError && (
+        <div className="absolute left-1/2 top-24 z-40 -translate-x-1/2 rounded-2xl border border-red-400/40 bg-black/70 px-6 py-3 text-center backdrop-blur-md">
+          <p className="text-sm font-bold text-red-300">
+            Couldn&apos;t load the instrumental audio.
+          </p>
+          <p className="mt-1 text-xs text-[#ffe8c2]/60">
+            The track file may be missing — try re-uploading the song.
+          </p>
+        </div>
+      )}
 
       {/* ── Top-Left Badges (z-index 30) ─────────────────────────────────── */}
       <div className="absolute top-6 left-6 z-30 flex flex-col items-start gap-2">
@@ -826,10 +839,17 @@ export default function KaraokePlayer({
         src={audioUrl}
         crossOrigin="anonymous"
         preload="auto"
-        onLoadedMetadata={(e) => setDuration((e.target as HTMLAudioElement).duration)}
+        onLoadedMetadata={(e) => {
+          setDuration((e.target as HTMLAudioElement).duration);
+          setAudioError(false);
+        }}
         onEnded={() => setIsPlaying(false)}
         onPause={() => setIsPlaying(false)}
         onPlay={() => setIsPlaying(true)}
+        onError={() => {
+          setAudioError(true);
+          setIsPlaying(false);
+        }}
       />
     </div>
   );

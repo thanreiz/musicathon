@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { SongHistoryRecord } from "@/lib/types";
 import GeneratedCover from "@/components/GeneratedCover";
+import { DEMO_SONGS } from "@/lib/demo-songs";
 
 function getDeviceId(): string {
   const KEY = "myusika_device_id";
@@ -86,6 +87,41 @@ export default function MySongsPage() {
             Your recent karaoke sessions
           </p>
         </div>
+
+        {/* Featured (built-in) songs — always available, no upload needed */}
+        <section>
+          <h2 className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-[#ffcf66]/80">
+            Featured — ready to sing
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {DEMO_SONGS.map((song) => (
+              <Link
+                key={song.trackId}
+                href={`/karaoke/${song.trackId}?instrumentalUrl=${encodeURIComponent(song.instrumentalUrl)}`}
+                className="group overflow-hidden rounded-[1.5rem] border border-[#ffcf66]/20 bg-[#1a0b10]/80 transition hover:border-[#ffcf66]/40 hover:bg-[#1a0b10]"
+              >
+                <div className="aspect-square overflow-hidden bg-[#ffcf66]/5">
+                  <GeneratedCover
+                    title={song.title}
+                    artist={song.artist}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="truncate font-bold text-[#fff8eb] group-hover:text-[#ffcf66]">
+                    {song.title}
+                  </h3>
+                  <p className="mt-1 truncate text-sm text-[#ffe8c2]/60">
+                    {song.artist}
+                  </p>
+                  <p className="mt-2 text-xs font-bold uppercase tracking-wider text-[#ffcf66]/40">
+                    Featured
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
 
         {isLoading ? (
           <div className="flex flex-col items-center gap-4 py-16">
