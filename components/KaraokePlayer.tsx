@@ -24,16 +24,37 @@ export default function KaraokePlayer({
   const audioRef = useRef<HTMLAudioElement>(null);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLInputElement>(null);
+  const currentTimeTextRef = useRef<HTMLSpanElement>(null);
   const animationRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [duration, setDuration] = useState(0);
   const [activeLine, setActiveLine] = useState(-1);
   const [activeWord, setActiveWord] = useState(-1);
   const [semitoneShift, setSemitoneShift] = useState(0);
+  const [playbackStatus, setPlaybackStatus] = useState<"before" | "during" | "after">("before");
+
+  // Sync offset in milliseconds: positive means lyrics appear earlier, negative means later
+  const [syncOffsetMs, setSyncOffsetMs] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("karaoke_sync_offset");
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed)) return parsed;
+      }
+    }
+    return 300; // Default 300ms advance offset for optimal singing alignment
+  });
+
+  // ── Format time ────────────────────────────────────────────────────
+  const formatTime = useCallback((seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }, []);
 
   // ── Binary search for current line ──────────────────────────────────
   const findCurrentLine = useCallback(
@@ -96,17 +117,42 @@ export default function KaraokePlayer({
     const audio = audioRef.current;
     if (!audio) return;
 
-    const timeMs = audio.currentTime * 1000;
-    setCurrentTimeMs(timeMs);
+    const timeSec = audio.currentTime;
+    const timeMs = timeSec * 1000;
 
-    const lineIdx = findCurrentLine(timeMs);
-    const wordIdx = findCurrentWord(lineIdx, timeMs);
+    // Update DOM directly for smooth progress/time display (avoiding 60fps React state updates)
+    if (progressBarRef.current) {
+      progressBarRef.current.value = String(timeSec);
+    }
+    if (currentTimeTextRef.current) {
+      currentTimeTextRef.current.textContent = formatTime(timeSec);
+    }
 
-    setActiveLine(lineIdx);
-    setActiveWord(wordIdx);
+    // Apply sync offset
+    const adjustedTimeMs = timeMs + syncOffsetMs;
+
+    const lineIdx = findCurrentLine(adjustedTimeMs);
+    const wordIdx = findCurrentWord(lineIdx, adjustedTimeMs);
+
+    setActiveLine((prev) => (prev !== lineIdx ? lineIdx : prev));
+    setActiveWord((prev) => (prev !== wordIdx ? wordIdx : prev));
+
+    // Update playback status
+    const firstLineStart = richsyncData[0]?.words[0]?.startTimeMs ?? 0;
+    const lastLine = richsyncData[richsyncData.length - 1];
+    const lastLineEnd = lastLine?.words[lastLine.words.length - 1]?.endTimeMs ?? 0;
+
+    const status =
+      adjustedTimeMs < firstLineStart
+        ? "before"
+        : lastLineEnd > 0 && adjustedTimeMs > lastLineEnd
+          ? "after"
+          : "during";
+
+    setPlaybackStatus((prev) => (prev !== status ? status : prev));
 
     animationRef.current = requestAnimationFrame(tick);
-  }, [findCurrentLine, findCurrentWord]);
+  }, [findCurrentLine, findCurrentWord, richsyncData, syncOffsetMs, formatTime]);
 
   // ── Start/stop animation loop when playing ─────────────────────────
   useEffect(() => {
@@ -170,9 +216,17 @@ export default function KaraokePlayer({
     const audio = audioRef.current;
     if (!audio) return;
     audio.currentTime = 0;
-    setCurrentTimeMs(0);
+
+    if (progressBarRef.current) {
+      progressBarRef.current.value = "0";
+    }
+    if (currentTimeTextRef.current) {
+      currentTimeTextRef.current.textContent = "0:00";
+    }
+
     setActiveLine(-1);
     setActiveWord(-1);
+    setPlaybackStatus("before");
   }, []);
 
   const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,22 +234,11 @@ export default function KaraokePlayer({
     if (!audio) return;
     const newTime = Number(e.target.value);
     audio.currentTime = newTime;
-    setCurrentTimeMs(newTime * 1000);
-  }, []);
 
-  // ── Determine playback state ───────────────────────────────────────
-  const firstLineStart = richsyncData[0]?.words[0]?.startTimeMs ?? 0;
-  const lastLine = richsyncData[richsyncData.length - 1];
-  const lastLineEnd = lastLine?.words[lastLine.words.length - 1]?.endTimeMs ?? 0;
-  const isBeforeFirstLyric = currentTimeMs < firstLineStart;
-  const isAfterLastLyric = currentTimeMs > lastLineEnd && lastLineEnd > 0;
-
-  // ── Format time ────────────────────────────────────────────────────
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
+    if (currentTimeTextRef.current) {
+      currentTimeTextRef.current.textContent = formatTime(newTime);
+    }
+  }, [formatTime]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -216,7 +259,7 @@ export default function KaraokePlayer({
         style={{ maxHeight: "55vh" }}
       >
         {/* Pre-first-lyric indicator */}
-        {isPlaying && isBeforeFirstLyric && (
+        {isPlaying && playbackStatus === "before" && (
           <div className="mb-6 text-center">
             <span className="animate-pulse text-lg font-bold text-[#ffb84d]">
               Get ready…
@@ -225,7 +268,7 @@ export default function KaraokePlayer({
         )}
 
         {/* Post-last-lyric indicator */}
-        {isAfterLastLyric && (
+        {playbackStatus === "after" && (
           <div className="mb-6 text-center">
             <span className="text-lg font-bold text-emerald-400">
               🎉 Great job!
@@ -248,7 +291,7 @@ export default function KaraokePlayer({
                     ? "scale-[1.02]"
                     : isPast
                       ? "opacity-40"
-                      : isBeforeFirstLyric
+                      : playbackStatus === "before"
                         ? "opacity-30"
                         : "opacity-50"
                 }`}
@@ -270,7 +313,7 @@ export default function KaraokePlayer({
                     return (
                       <span
                         key={wordIdx}
-                        className={`inline transition-colors duration-150 ${color}`}
+                        className={`inline transition-colors duration-75 ${color}`}
                       >
                         {word.text}
                       </span>
@@ -287,15 +330,19 @@ export default function KaraokePlayer({
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 rounded-[2rem] border border-[#ffcf66]/12 bg-[#0c060d]/80 p-4 sm:p-5">
         {/* Seek bar */}
         <div className="flex items-center gap-3">
-          <span className="min-w-[3rem] text-right text-xs font-bold text-[#ffe8c2]/60">
-            {formatTime(currentTimeMs / 1000)}
+          <span
+            ref={currentTimeTextRef}
+            className="min-w-[3rem] text-right text-xs font-bold text-[#ffe8c2]/60"
+          >
+            0:00
           </span>
           <input
+            ref={progressBarRef}
             type="range"
             min={0}
             max={duration || 1}
             step={0.1}
-            value={currentTimeMs / 1000}
+            defaultValue={0}
             onChange={handleSeek}
             className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-[#ffcf66]/15 accent-[#ffb84d] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#ffb84d]"
           />
@@ -305,7 +352,7 @@ export default function KaraokePlayer({
         </div>
 
         {/* Buttons row */}
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-4 flex-wrap sm:flex-nowrap">
           {/* Restart */}
           <button
             type="button"
@@ -338,7 +385,7 @@ export default function KaraokePlayer({
           </button>
 
           {/* Pitch controls */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 border-l border-[#ffcf66]/15 pl-4">
             <button
               type="button"
               onClick={() => setSemitoneShift((s) => Math.max(s - 1, -6))}
@@ -369,6 +416,52 @@ export default function KaraokePlayer({
             </button>
             <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide text-[#ffe8c2]/40">
               Key
+            </span>
+          </div>
+
+          {/* Sync offset controls */}
+          <div className="flex items-center gap-1.5 border-l border-[#ffcf66]/15 pl-4">
+            <button
+              type="button"
+              onClick={() => {
+                const newOffset = Math.max(syncOffsetMs - 100, -2000);
+                setSyncOffsetMs(newOffset);
+                localStorage.setItem("karaoke_sync_offset", String(newOffset));
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#ffcf66]/25 text-xs font-bold text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
+              title="Lyrics later (delay highlight)"
+            >
+              -
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSyncOffsetMs(0);
+                localStorage.setItem("karaoke_sync_offset", "0");
+              }}
+              className={`flex h-8 min-w-[3.5rem] items-center justify-center rounded-full px-2 text-xs font-bold transition ${
+                syncOffsetMs === 0
+                  ? "bg-[#ffcf66]/10 text-[#ffcf66]"
+                  : "border border-[#ffcf66]/25 text-[#ffefcf] hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
+              }`}
+              title="Reset lyrics sync"
+            >
+              {syncOffsetMs >= 0 ? `+${(syncOffsetMs / 1000).toFixed(1)}s` : `${(syncOffsetMs / 1000).toFixed(1)}s`}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const newOffset = Math.min(syncOffsetMs + 100, 2000);
+                setSyncOffsetMs(newOffset);
+                localStorage.setItem("karaoke_sync_offset", String(newOffset));
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#ffcf66]/25 text-xs font-bold text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
+              title="Lyrics earlier (advance highlight)"
+            >
+              +
+            </button>
+            <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide text-[#ffe8c2]/40">
+              Sync
             </span>
           </div>
         </div>
