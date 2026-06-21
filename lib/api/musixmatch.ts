@@ -294,8 +294,19 @@ function parseLrcSubtitle(lrc: string): RichsyncLine[] {
   }
 
   return entries.map((entry, i, arr) => {
-    const endTimeMs =
-      i < arr.length - 1 ? arr[i + 1].timeMs : entry.timeMs + 5000;
+    // LRC only marks when a line *starts*. If we glue each line's end to the
+    // next line's start, every line is back-to-back with zero gaps — which
+    // silently disables instrumental-break detection and the dim "preview"
+    // state on non-richsync songs. Instead, estimate how long the line is
+    // actually sung (roughly proportional to its length) and let any leftover
+    // time before the next line read as a real gap.
+    const estimatedDurationMs = Math.min(
+      Math.max(entry.text.length * 90, 1500),
+      6000,
+    );
+    const nextStart =
+      i < arr.length - 1 ? arr[i + 1].timeMs : entry.timeMs + estimatedDurationMs;
+    const endTimeMs = Math.min(nextStart, entry.timeMs + estimatedDurationMs);
 
     return {
       text: entry.text,
