@@ -7,7 +7,7 @@ export default function Home() {
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-amber/15 to-transparent" />
 
       <section className="relative mx-auto flex w-full max-w-6xl flex-col gap-10">
-        <div className="max-w-3xl">
+        <div className="max-w-3xl animate-fade-in-up">
           <h1 className="font-display text-6xl leading-none text-gold drop-shadow-[0_0_28px_rgba(255,184,77,0.38)] sm:text-7xl lg:text-8xl">
             Myusika
           </h1>
@@ -16,16 +16,19 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div
+          className="flex flex-col gap-4 sm:flex-row sm:items-center animate-fade-in-up"
+          style={{ animationDelay: "120ms" }}
+        >
           <Link
             href="/search"
-            className="inline-flex h-12 items-center justify-center rounded-full bg-amber px-7 text-sm font-bold uppercase tracking-wide text-surface shadow-[0_14px_40px_rgba(255,184,77,0.28)] transition hover:bg-gold-hover focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-bg"
+            className="inline-flex h-12 items-center justify-center rounded-full bg-amber px-7 text-sm font-bold uppercase tracking-wide text-surface shadow-[0_14px_40px_rgba(255,184,77,0.28)] transition hover:bg-gold-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-bg"
           >
             Search a song
           </Link>
           <Link
             href="/my-songs"
-            className="inline-flex h-12 items-center justify-center rounded-full border border-gold/35 px-7 text-sm font-bold uppercase tracking-wide text-cream-light transition hover:border-gold hover:bg-gold/10 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-bg"
+            className="inline-flex h-12 items-center justify-center rounded-full border border-gold/35 px-7 text-sm font-bold uppercase tracking-wide text-cream-light transition hover:border-gold hover:bg-gold/10 active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-bg"
           >
             My Songs
           </Link>

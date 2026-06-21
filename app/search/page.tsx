@@ -176,11 +176,12 @@ export default function SearchPage() {
 
           {!showLoading && !visibleError && visibleResults.length > 0 ? (
             <div className="grid gap-3">
-              {visibleResults.map((track) => (
+              {visibleResults.map((track, idx) => (
                 <Link
-                  className="group grid grid-cols-[4.5rem_1fr] gap-4 rounded-3xl border border-gold/12 bg-surface-alt/85 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-amber/45 hover:bg-surface-hover active:translate-y-0"
+                  className="group grid grid-cols-[4.5rem_1fr] gap-4 rounded-3xl border border-gold/12 bg-surface-alt/85 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-amber/45 hover:bg-surface-hover active:translate-y-0 active:scale-[0.99] animate-fade-in-up"
                   href={`/confirm/${track.trackId}`}
                   key={track.trackId}
+                  style={{ animationDelay: `${Math.min(idx, 6) * 40}ms` }}
                 >
                   <TrackArtwork track={track} size={72} />
                   <div className="min-w-0 self-center">
@@ -218,7 +219,8 @@ export default function SearchPage() {
                       setQuery(song.query);
                       setDebouncedQuery(song.query);
                     }}
-                    className="flex flex-col gap-3 rounded-2xl border border-gold/12 bg-surface-alt/85 p-4 text-left transition hover:-translate-y-0.5 hover:border-amber/45 hover:bg-surface-hover active:translate-y-0 shadow-[0_12px_36px_rgba(0,0,0,0.15)] group"
+                    className="flex flex-col gap-3 rounded-2xl border border-gold/12 bg-surface-alt/85 p-4 text-left transition hover:-translate-y-0.5 hover:border-amber/45 hover:bg-surface-hover active:translate-y-0 active:scale-[0.98] shadow-[0_12px_36px_rgba(0,0,0,0.15)] group animate-fade-in-up"
+                    style={{ animationDelay: `${Math.min(idx, 7) * 40}ms` }}
                   >
                     {/* Mic Icon */}
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber/10 text-gold transition group-hover:bg-amber/20">

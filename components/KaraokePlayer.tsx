@@ -414,7 +414,7 @@ export default function KaraokePlayer({
       <button
         type="button"
         onClick={() => setIsDrawerOpen(true)}
-        className="absolute top-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-black/40 border border-white/10 text-white backdrop-blur-md transition hover:bg-black/60 hover:border-gold/50 shadow-lg"
+        className="absolute top-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-black/40 border border-white/10 text-white backdrop-blur-md transition hover:bg-black/60 hover:border-gold/50 active:scale-90 shadow-lg"
         title="Open Settings Menu"
       >
         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -573,18 +573,25 @@ export default function KaraokePlayer({
       </div>
 
       {/* ── Settings Drawer (z-index 50) ───────────────────────────────── */}
-      {isDrawerOpen && (
-        <>
+      <>
           {/* Overlay Backdrop */}
           <div
             onClick={() => setIsDrawerOpen(false)}
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
+            aria-hidden={!isDrawerOpen}
+            className={`fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity duration-300 ${
+              isDrawerOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
           />
 
           {/* Drawer Sidebar */}
-          <div className="fixed top-0 right-0 z-50 h-full w-80 max-w-[85vw] bg-bg-deep/95 border-l border-gold/20 p-6 flex flex-col justify-between shadow-2xl overflow-y-auto">
+          <div
+            aria-hidden={!isDrawerOpen}
+            className={`fixed top-0 right-0 z-50 h-full w-80 max-w-[85vw] bg-bg-deep/95 border-l border-gold/20 p-6 flex flex-col justify-between shadow-2xl overflow-y-auto transition-transform duration-300 ease-out ${
+              isDrawerOpen ? "translate-x-0" : "translate-x-full pointer-events-none"
+            }`}
+          >
             <div className="flex flex-col gap-6">
-              
+
               {/* Drawer Header */}
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <h3 className="text-lg font-black uppercase tracking-wider text-gold">
@@ -593,7 +600,7 @@ export default function KaraokePlayer({
                 <button
                   type="button"
                   onClick={() => setIsDrawerOpen(false)}
-                  className="text-white/60 hover:text-white transition"
+                  className="text-white/60 hover:text-white transition active:scale-90"
                   title="Close Menu"
                 >
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -734,7 +741,7 @@ export default function KaraokePlayer({
                   setIsDrawerOpen(false);
                   router.push("/search");
                 }}
-                className="w-full h-11 rounded-xl bg-amber text-sm font-black uppercase tracking-wider text-surface flex items-center justify-center transition hover:bg-gold-hover"
+                className="w-full h-11 rounded-xl bg-amber text-sm font-black uppercase tracking-wider text-surface flex items-center justify-center transition hover:bg-gold-hover active:scale-[0.97]"
               >
                 Back to Search
               </button>
@@ -744,7 +751,7 @@ export default function KaraokePlayer({
                   setIsDrawerOpen(false);
                   router.push("/my-songs");
                 }}
-                className="w-full h-11 rounded-xl bg-white/5 border border-white/15 text-sm font-bold text-white flex items-center justify-center transition hover:bg-white/10"
+                className="w-full h-11 rounded-xl bg-white/5 border border-white/15 text-sm font-bold text-white flex items-center justify-center transition hover:bg-white/10 active:scale-[0.97]"
               >
                 My Songs library
               </button>
@@ -754,15 +761,14 @@ export default function KaraokePlayer({
                   setIsDrawerOpen(false);
                   router.push("/");
                 }}
-                className="w-full h-11 rounded-xl bg-white/5 border border-white/15 text-sm font-bold text-white flex items-center justify-center transition hover:bg-white/10"
+                className="w-full h-11 rounded-xl bg-white/5 border border-white/15 text-sm font-bold text-white flex items-center justify-center transition hover:bg-white/10 active:scale-[0.97]"
               >
                 Home page
               </button>
             </div>
 
           </div>
-        </>
-      )}
+      </>
 
       {/* ── Dev-only Fast-Forward Panel (z-index 50) ───────────────────── */}
       {isDev && (

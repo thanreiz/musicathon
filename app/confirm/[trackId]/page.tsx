@@ -322,9 +322,9 @@ function AudioUploadZone({
     return (
       <button
         type="button"
-        className={`group w-full cursor-pointer rounded-[2rem] border-2 border-dashed p-8 text-center transition-all ${
+        className={`group w-full cursor-pointer rounded-[2rem] border-2 border-dashed p-8 text-center transition-all active:scale-[0.99] ${
           isDragOver
-            ? "border-amber bg-amber/10"
+            ? "border-amber bg-amber/10 scale-[1.01]"
             : "border-gold/30 bg-bg-deep/80 hover:border-gold/60 hover:bg-bg-deep"
         }`}
         onClick={() => inputRef.current?.click()}
@@ -398,9 +398,9 @@ function AudioUploadZone({
   // ── Complete ───────────────────────────────────────────────────────
   if (uploadState.phase === "complete") {
     return (
-      <div className="rounded-[2rem] border border-gold/15 bg-bg-deep/80 p-8 text-center">
+      <div className="rounded-[2rem] border border-gold/15 bg-bg-deep/80 p-8 text-center animate-fade-in-up">
         {/* Success icon */}
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 animate-fade-in-up">
           <svg
             className="h-8 w-8 text-emerald-400"
             fill="none"
@@ -424,7 +424,7 @@ function AudioUploadZone({
         </p>
         <button
           type="button"
-          className="mt-6 inline-flex h-12 items-center justify-center rounded-full bg-amber px-8 text-sm font-bold uppercase tracking-wide text-surface shadow-[0_14px_40px_rgba(255,184,77,0.28)] transition hover:bg-gold-hover focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-bg"
+          className="mt-6 inline-flex h-12 items-center justify-center rounded-full bg-amber px-8 text-sm font-bold uppercase tracking-wide text-surface shadow-[0_14px_40px_rgba(255,184,77,0.28)] transition hover:bg-gold-hover active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-bg"
           onClick={onStartKaraoke}
         >
           Start Karaoke
@@ -435,9 +435,9 @@ function AudioUploadZone({
 
   // ── Error ──────────────────────────────────────────────────────────
   return (
-    <div className="rounded-[2rem] border border-red-500/25 bg-bg-deep/80 p-8 text-center">
+    <div className="rounded-[2rem] border border-red-500/25 bg-bg-deep/80 p-8 text-center animate-fade-in-up">
       {/* Error icon */}
-      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15">
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15 animate-fade-in-up">
         <svg
           className="h-8 w-8 text-red-400"
           fill="none"
@@ -460,7 +460,7 @@ function AudioUploadZone({
       </p>
       <button
         type="button"
-        className="mt-6 inline-flex h-10 items-center justify-center rounded-full border border-gold/35 px-6 text-sm font-bold uppercase tracking-wide text-cream-light transition hover:border-gold hover:bg-gold/10"
+        className="mt-6 inline-flex h-10 items-center justify-center rounded-full border border-gold/35 px-6 text-sm font-bold uppercase tracking-wide text-cream-light transition hover:border-gold hover:bg-gold/10 active:scale-[0.97]"
         onClick={onRetry}
       >
         Try again
