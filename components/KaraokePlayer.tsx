@@ -53,6 +53,7 @@ export default function KaraokePlayer({
   const [playbackStatus, setPlaybackStatus] = useState<"before" | "during" | "after">("before");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isInstrumentalBreak, setIsInstrumentalBreak] = useState(false);
+  const [isLineLit, setIsLineLit] = useState(false);
   
   // Persisted lyric font size setting
   const [lyricSize, setLyricSize] = useState<"small" | "medium" | "large">("medium");
@@ -103,7 +104,7 @@ export default function KaraokePlayer({
 
       let low = 0;
       let high = richsyncData.length - 1;
-      let result = -1;
+      let result = richsyncData.length - 1; // Default to last line if past all
 
       while (low <= high) {
         const mid = Math.floor((low + high) / 2);
@@ -112,33 +113,13 @@ export default function KaraokePlayer({
           low = mid + 1;
           continue;
         }
-        const lineStart = line.words[0].startTimeMs;
+        const lineEnd = line.words[line.words.length - 1].endTimeMs;
 
-        if (lineStart <= timeMs) {
+        if (lineEnd >= timeMs) {
           result = mid;
-          low = mid + 1;
-        } else {
           high = mid - 1;
-        }
-      }
-
-      // Check if we're past the end of the found line
-      if (result >= 0) {
-        const line = richsyncData[result];
-        if (line && line.words && line.words.length > 0) {
-          const lastWord = line.words[line.words.length - 1];
-          if (lastWord && timeMs > lastWord.endTimeMs) {
-            // Check if there's a next line coming soon
-            if (result + 1 < richsyncData.length) {
-              const nextLine = richsyncData[result + 1];
-              if (nextLine && nextLine.words && nextLine.words.length > 0) {
-                const nextLineStart = nextLine.words[0].startTimeMs;
-                if (timeMs < nextLineStart) {
-                  return result; // Stay on current line in gaps
-                }
-              }
-            }
-          }
+        } else {
+          low = mid + 1;
         }
       }
 
@@ -160,15 +141,15 @@ export default function KaraokePlayer({
 
       // 2. Inter-line gaps check
       const lineIdx = findCurrentLine(timeMs);
-      if (lineIdx >= 0 && lineIdx < richsyncData.length - 1) {
+      if (lineIdx > 0 && lineIdx < richsyncData.length) {
+        const prevLine = richsyncData[lineIdx - 1];
         const currentLine = richsyncData[lineIdx];
-        const nextLine = richsyncData[lineIdx + 1];
         
-        const currentEnd = currentLine.words[currentLine.words.length - 1]?.endTimeMs ?? 0;
-        const nextStart = nextLine.words[0]?.startTimeMs ?? 0;
+        const prevEnd = prevLine.words[prevLine.words.length - 1]?.endTimeMs ?? 0;
+        const currentStart = currentLine.words[0]?.startTimeMs ?? 0;
         
-        if (nextStart - currentEnd >= INSTRUMENTAL_GAP_THRESHOLD_MS) {
-          return timeMs > currentEnd && timeMs < nextStart;
+        if (currentStart - prevEnd >= INSTRUMENTAL_GAP_THRESHOLD_MS) {
+          return timeMs > prevEnd && timeMs < currentStart;
         }
       }
 
@@ -197,29 +178,18 @@ export default function KaraokePlayer({
     const lineIdx = findCurrentLine(adjustedTimeMs);
     const inBreak = checkInstrumentalBreak(adjustedTimeMs);
 
+    let isLit = false;
+    if (lineIdx >= 0 && lineIdx < richsyncData.length) {
+      const line = richsyncData[lineIdx];
+      const lineStart = line.words[0]?.startTimeMs ?? 0;
+      const lineEnd = line.words[line.words.length - 1]?.endTimeMs ?? 0;
+      isLit = adjustedTimeMs >= lineStart && adjustedTimeMs <= lineEnd;
+    }
+
     // Update states only when they change to eliminate React rendering lag
     setActiveLine((prev) => (prev !== lineIdx ? lineIdx : prev));
     setIsInstrumentalBreak((prev) => (prev !== inBreak ? inBreak : prev));
-
-    // Handle smooth visual highlighting directly on the active line element in DOM (Task 1)
-    const activeLineEl = document.getElementById("active-line-el");
-    if (activeLineEl && !inBreak) {
-      const elLineIdx = parseInt(activeLineEl.getAttribute("data-line-idx") || "-1", 10);
-      if (elLineIdx >= 0 && elLineIdx < richsyncData.length) {
-        const line = richsyncData[elLineIdx];
-        const lineStart = line.words[0]?.startTimeMs ?? 0;
-        const lineEnd = line.words[line.words.length - 1]?.endTimeMs ?? 0;
-        const isLit = adjustedTimeMs >= lineStart && adjustedTimeMs <= lineEnd;
-
-        if (isLit) {
-          activeLineEl.classList.add("lyric-line-lit");
-          activeLineEl.classList.remove("lyric-line-unlit");
-        } else {
-          activeLineEl.classList.add("lyric-line-unlit");
-          activeLineEl.classList.remove("lyric-line-lit");
-        }
-      }
-    }
+    setIsLineLit((prev) => (prev !== (isLit && !inBreak) ? (isLit && !inBreak) : prev));
 
     // Update playback status
     const firstLineStart = richsyncData[0]?.words[0]?.startTimeMs ?? 0;
@@ -294,19 +264,9 @@ export default function KaraokePlayer({
 
     setActiveLine(-1);
     setIsInstrumentalBreak(false);
+    setIsLineLit(false);
     setPlaybackStatus("before");
   }, []);
-
-  // Determine if the line is initially lit when rendering (Task 1)
-  let isLineLitInitial = false;
-  if (typeof window !== "undefined" && playbackStatus === "during" && activeLine >= 0) {
-    const audio = audioRef.current;
-    const timeMs = (audio ? audio.currentTime : 0) * 1000 + syncOffsetMs;
-    const line = richsyncData[activeLine];
-    const lineStart = line?.words[0]?.startTimeMs ?? 0;
-    const lineEnd = line?.words[line?.words.length - 1]?.endTimeMs ?? 0;
-    isLineLitInitial = timeMs >= lineStart && timeMs <= lineEnd;
-  }
 
   // Lyric sizes configuration classes map
   const lyricSizeClass = 
@@ -323,15 +283,14 @@ export default function KaraokePlayer({
         .lyric-line {
           font-weight: 900;
           text-align: center;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
-          transition: color 0.2s ease, text-shadow 0.2s ease;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+          transition: color 0.25s ease;
         }
         .lyric-line-unlit {
           color: rgba(255, 255, 255, 0.35);
         }
         .lyric-line-lit {
           color: #ffcf66;
-          text-shadow: 0 0 16px rgba(255, 207, 102, 0.95), 0 2px 4px rgba(0, 0, 0, 0.9);
         }
       `}</style>
 
@@ -436,7 +395,7 @@ export default function KaraokePlayer({
                     id="active-line-el"
                     data-line-idx={activeLine}
                     className={`${lyricSizeClass} lyric-line ${
-                      isLineLitInitial ? "lyric-line-lit" : "lyric-line-unlit"
+                      isLineLit ? "lyric-line-lit" : "lyric-line-unlit"
                     } uppercase leading-tight tracking-wide`}
                   >
                     {richsyncData[activeLine].text}
