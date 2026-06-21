@@ -2,7 +2,7 @@
 
 import KaraokePlayer from "@/components/KaraokePlayer";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { RichsyncData, RichsyncLine, TrackMetadata } from "@/lib/types";
 
@@ -12,6 +12,7 @@ type TrackResponse = {
 };
 
 export default function KaraokePage() {
+  const router = useRouter();
   const params = useParams<{ trackId: string }>();
   const trackId = params.trackId ?? "";
   const searchParams = useSearchParams();
@@ -83,13 +84,43 @@ export default function KaraokePage() {
     return (
       <main className="min-h-screen bg-[#120913] px-5 py-8 text-[#fff8eb] sm:px-8">
         <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-8">
-          <header className="flex w-full items-center justify-between gap-4">
-            <Link
-              href="/search"
-              className="rounded-full border border-[#ffcf66]/25 px-4 py-2 text-sm font-bold text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
-            >
-              Back to search
-            </Link>
+          <header className="flex w-full items-center justify-between gap-4 border-b border-[#ffcf66]/10 pb-4">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="text-2xl font-black text-[#ffcf66] transition hover:text-[#ffd98a]"
+              >
+                Myusika
+              </Link>
+              <span className="text-[#ffcf66]/30">|</span>
+              <button
+                onClick={() => {
+                  if (window.history.length > 1) {
+                    router.back();
+                  } else {
+                    router.push("/");
+                  }
+                }}
+                className="flex items-center gap-1 text-sm font-bold text-[#ffefcf] hover:text-[#ffcf66] transition"
+              >
+                ← Back
+              </button>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/search"
+                className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffe8c2]/75 hover:text-[#ffcf66] transition"
+              >
+                Search
+              </Link>
+              <span className="text-[#ffcf66]/30">|</span>
+              <Link
+                href="/my-songs"
+                className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffe8c2]/75 hover:text-[#ffcf66] transition"
+              >
+                My Songs
+              </Link>
+            </div>
           </header>
 
           <section className="w-full rounded-[2rem] border border-[#ffcf66]/12 bg-[#1a0b10]/80 p-8 text-center">
@@ -139,16 +170,43 @@ export default function KaraokePage() {
   return (
     <main className="min-h-screen bg-[#120913] px-5 py-8 text-[#fff8eb] sm:px-8">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <header className="flex items-center justify-between gap-4">
-          <Link
-            href="/search"
-            className="rounded-full border border-[#ffcf66]/25 px-4 py-2 text-sm font-bold text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
-          >
-            Back to search
-          </Link>
-          <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffe8c2]/55">
-            Karaoke
-          </span>
+        <header className="flex items-center justify-between gap-4 border-b border-[#ffcf66]/10 pb-4">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="text-2xl font-black text-[#ffcf66] transition hover:text-[#ffd98a]"
+            >
+              Myusika
+            </Link>
+            <span className="text-[#ffcf66]/30">|</span>
+            <button
+              onClick={() => {
+                if (window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push("/");
+                }
+              }}
+              className="flex items-center gap-1 text-sm font-bold text-[#ffefcf] hover:text-[#ffcf66] transition"
+            >
+              ← Back
+            </button>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/search"
+              className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffe8c2]/75 hover:text-[#ffcf66] transition"
+            >
+              Search
+            </Link>
+            <span className="text-[#ffcf66]/30">|</span>
+            <Link
+              href="/my-songs"
+              className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffe8c2]/75 hover:text-[#ffcf66] transition"
+            >
+              My Songs
+            </Link>
+          </div>
         </header>
 
         <KaraokePlayer

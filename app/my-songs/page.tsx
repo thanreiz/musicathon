@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { SongHistoryRecord } from "@/lib/types";
 
@@ -16,6 +17,7 @@ function getDeviceId(): string {
 }
 
 export default function MySongsPage() {
+  const router = useRouter();
   const [history, setHistory] = useState<SongHistoryRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -39,16 +41,40 @@ export default function MySongsPage() {
   return (
     <main className="min-h-screen bg-[#120913] px-5 py-8 text-[#fff8eb] sm:px-8">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
-        <header className="flex items-center justify-between gap-4">
-          <Link
-            href="/"
-            className="rounded-full border border-[#ffcf66]/25 px-4 py-2 text-sm font-bold text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
-          >
-            Home
-          </Link>
-          <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffe8c2]/55">
-            My Songs
-          </span>
+        <header className="flex items-center justify-between gap-4 border-b border-[#ffcf66]/10 pb-4">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="text-2xl font-black text-[#ffcf66] transition hover:text-[#ffd98a]"
+            >
+              Myusika
+            </Link>
+            <span className="text-[#ffcf66]/30">|</span>
+            <button
+              onClick={() => {
+                if (window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push("/");
+                }
+              }}
+              className="flex items-center gap-1 text-sm font-bold text-[#ffefcf] hover:text-[#ffcf66] transition"
+            >
+              ← Back
+            </button>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/search"
+              className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffe8c2]/75 hover:text-[#ffcf66] transition"
+            >
+              Search
+            </Link>
+            <span className="text-[#ffcf66]/30">|</span>
+            <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffcf66]">
+              My Songs
+            </span>
+          </div>
         </header>
 
         <div>
