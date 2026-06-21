@@ -53,7 +53,9 @@ export default function KaraokePlayer({
   const [playbackStatus, setPlaybackStatus] = useState<"before" | "during" | "after">("before");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isInstrumentalBreak, setIsInstrumentalBreak] = useState(false);
-  const [isLineLit, setIsLineLit] = useState(false);
+  // Index of the word currently being sung within the active line (-1 = none
+  // started yet). Drives the per-word highlight.
+  const [activeWord, setActiveWord] = useState(-1);
   
   // Persisted lyric font size setting
   const [lyricSize, setLyricSize] = useState<"small" | "medium" | "large">("medium");
@@ -173,18 +175,24 @@ export default function KaraokePlayer({
     const lineIdx = findCurrentLine(adjustedTimeMs);
     const inBreak = checkInstrumentalBreak(adjustedTimeMs);
 
-    let isLit = false;
-    if (lineIdx >= 0 && lineIdx < richsyncData.length) {
-      const line = richsyncData[lineIdx];
-      const lineStart = line.words[0]?.startTimeMs ?? 0;
-      const lineEnd = line.words[line.words.length - 1]?.endTimeMs ?? 0;
-      isLit = adjustedTimeMs >= lineStart && adjustedTimeMs <= lineEnd;
+    // Find the word currently being sung: the last word in the active line
+    // whose start time has been reached. -1 means the line hasn't started yet
+    // (shown dim as a preview).
+    let wordIdx = -1;
+    if (!inBreak && lineIdx >= 0 && lineIdx < richsyncData.length) {
+      const words = richsyncData[lineIdx].words;
+      for (let i = words.length - 1; i >= 0; i--) {
+        if (adjustedTimeMs >= words[i].startTimeMs) {
+          wordIdx = i;
+          break;
+        }
+      }
     }
 
     // Update states only when they change to eliminate React rendering lag
     setActiveLine((prev) => (prev !== lineIdx ? lineIdx : prev));
     setIsInstrumentalBreak((prev) => (prev !== inBreak ? inBreak : prev));
-    setIsLineLit((prev) => (prev !== (isLit && !inBreak) ? (isLit && !inBreak) : prev));
+    setActiveWord((prev) => (prev !== wordIdx ? wordIdx : prev));
 
     // Update playback status
     const firstLineStart = richsyncData[0]?.words[0]?.startTimeMs ?? 0;
@@ -259,7 +267,7 @@ export default function KaraokePlayer({
 
     setActiveLine(-1);
     setIsInstrumentalBreak(false);
-    setIsLineLit(false);
+    setActiveWord(-1);
     setPlaybackStatus("before");
   }, []);
 
@@ -273,19 +281,26 @@ export default function KaraokePlayer({
 
   return (
     <div className="relative h-screen w-screen overflow-hidden font-sans text-white select-none bg-[#0c060d]">
-      {/* CSS Stylesheet Injector for premium layout-stable line highlighting */}
+      {/* CSS Stylesheet Injector for per-word karaoke highlighting */}
       <style>{`
-        .lyric-line {
+        .lyric-word {
+          display: inline-block;
           font-weight: 900;
-          text-align: center;
           text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
-          transition: color 0.25s ease;
+          transition: color 0.12s ease;
         }
-        .lyric-line-unlit {
-          color: rgba(255, 255, 255, 0.35);
+        /* Not yet sung */
+        .lyric-word-upcoming {
+          color: rgba(255, 255, 255, 0.4);
         }
-        .lyric-line-lit {
+        /* Already sung */
+        .lyric-word-sung {
           color: #ffcf66;
+        }
+        /* Currently being sung — brightest, with a soft glow */
+        .lyric-word-active {
+          color: #ffe6a3;
+          text-shadow: 0 0 18px rgba(255, 207, 102, 0.85), 0 2px 4px rgba(0, 0, 0, 0.8);
         }
       `}</style>
 
@@ -379,7 +394,7 @@ export default function KaraokePlayer({
           {playbackStatus === "during" && activeLine >= 0 && (
             <div className="w-full text-center space-y-8 animate-fade-in">
               
-              {/* CURRENT ACTIVE LINE (Task 1: single block, no word spans, no split rendering) */}
+              {/* CURRENT ACTIVE LINE — per-word highlight as each word is sung */}
               <div className="min-h-[4rem] sm:min-h-[5rem] lg:min-h-[6rem] flex items-center justify-center px-4">
                 {isInstrumentalBreak ? (
                   <p className="text-xl sm:text-2xl md:text-3xl font-black italic tracking-widest text-[#ffe8c2]/50 animate-pulse uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
@@ -387,13 +402,25 @@ export default function KaraokePlayer({
                   </p>
                 ) : (
                   <p
-                    id="active-line-el"
                     data-line-idx={activeLine}
-                    className={`${lyricSizeClass} lyric-line ${
-                      isLineLit ? "lyric-line-lit" : "lyric-line-unlit"
-                    } uppercase leading-tight tracking-wide`}
+                    className={`${lyricSizeClass} flex flex-wrap items-center justify-center gap-x-[0.3em] uppercase leading-tight tracking-wide`}
                   >
-                    {richsyncData[activeLine].text}
+                    {richsyncData[activeLine].words.map((word, wordIdx) => {
+                      const state =
+                        wordIdx < activeWord
+                          ? "sung"
+                          : wordIdx === activeWord
+                            ? "active"
+                            : "upcoming";
+                      return (
+                        <span
+                          key={wordIdx}
+                          className={`lyric-word lyric-word-${state}`}
+                        >
+                          {word.text.trim()}
+                        </span>
+                      );
+                    })}
                   </p>
                 )}
               </div>

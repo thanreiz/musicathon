@@ -310,13 +310,40 @@ function parseLrcSubtitle(lrc: string): RichsyncLine[] {
 
     return {
       text: entry.text,
-      words: [
-        {
-          text: entry.text,
-          startTimeMs: entry.timeMs,
-          endTimeMs,
-        },
-      ],
+      // LRC has no per-word timing, so spread the line's [start, end] window
+      // across its words (proportional to length) to drive the per-word
+      // highlight. Approximate, but gives word-by-word progression.
+      words: distributeWordTimings(entry.text, entry.timeMs, endTimeMs),
+    };
+  });
+}
+
+/**
+ * Splits a line of text into words and assigns each an estimated time window by
+ * distributing [startMs, endMs] proportionally to word length. Used for LRC
+ * lyrics, which only provide line-level timestamps.
+ */
+function distributeWordTimings(
+  text: string,
+  startMs: number,
+  endMs: number,
+): RichsyncWord[] {
+  const tokens = text.split(/\s+/).filter((t) => t.length > 0);
+  if (tokens.length === 0) {
+    return [{ text, startTimeMs: startMs, endTimeMs: endMs }];
+  }
+
+  const totalChars = tokens.reduce((sum, t) => sum + t.length, 0) || 1;
+  const span = Math.max(0, endMs - startMs);
+  let cursor = startMs;
+
+  return tokens.map((token) => {
+    const wordStart = cursor;
+    cursor += (token.length / totalChars) * span;
+    return {
+      text: token,
+      startTimeMs: Math.round(wordStart),
+      endTimeMs: Math.round(cursor),
     };
   });
 }
