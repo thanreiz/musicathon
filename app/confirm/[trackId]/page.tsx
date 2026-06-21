@@ -209,10 +209,36 @@ export default function ConfirmTrackPage() {
 
   // ── Navigate to karaoke ────────────────────────────────────────────
   const handleStartKaraoke = useCallback(() => {
-    if (uploadState.phase !== "complete") return;
+    if (uploadState.phase !== "complete" || !track) return;
+
+    // Save to history (fire-and-forget — don't block navigation)
+    try {
+      const KEY = "myusika_device_id";
+      let deviceId = localStorage.getItem(KEY);
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem(KEY, deviceId);
+      }
+
+      void fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deviceId,
+          trackId,
+          title: track.title,
+          artist: track.artist,
+          coverArtUrl: track.coverArtUrl,
+          instrumentalUrl: uploadState.instrumentalUrl,
+        }),
+      });
+    } catch {
+      // Saving history is best-effort
+    }
+
     const url = `/karaoke/${trackId}?instrumentalUrl=${encodeURIComponent(uploadState.instrumentalUrl)}`;
     router.push(url);
-  }, [router, trackId, uploadState]);
+  }, [router, track, trackId, uploadState]);
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
