@@ -30,6 +30,33 @@ const VIDEO_NAMES = [
 
 const INSTRUMENTAL_GAP_THRESHOLD_MS = 4000; // 4 seconds threshold for instrumental break indication
 
+// ── Melisma / held-note tuning (req 2) ──────────────────────────────────────
+// These are heuristics, not exact phonetics — tune freely.
+// Expected sung time per syllable. Used only to decide when a word's actual
+// duration is unusually long (a held/sustained note).
+const MS_PER_SYLLABLE = 220;
+// A word counts as "held" when its real duration exceeds expected by this factor
+const HELD_NOTE_MULTIPLIER = 1.8;
+// ...and is at least this long in absolute terms (avoids flagging short words).
+const HELD_NOTE_MIN_MS = 900;
+
+/**
+ * Rough syllable estimate: number of vowel-group clusters, min 1.
+ * Assumption: English-leaning; approximate for Tagalog and other languages.
+ */
+function syllableCount(text: string): number {
+  const groups = text.toLowerCase().match(/[aeiouy]+/g);
+  return Math.max(1, groups ? groups.length : 1);
+}
+
+/** Whether a word's sung duration is long enough to treat as a held note. */
+function isHeldNote(startTimeMs: number, endTimeMs: number, text: string): boolean {
+  const duration = endTimeMs - startTimeMs;
+  if (duration < HELD_NOTE_MIN_MS) return false;
+  const expected = syllableCount(text) * MS_PER_SYLLABLE;
+  return duration > expected * HELD_NOTE_MULTIPLIER;
+}
+
 export default function KaraokePlayer({
   audioUrl,
   richsyncData,
@@ -42,6 +69,7 @@ export default function KaraokePlayer({
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressIndicatorRef = useRef<HTMLDivElement>(null);
+  const activeWordRef = useRef<HTMLSpanElement>(null);
   const animationRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
@@ -191,6 +219,22 @@ export default function KaraokePlayer({
           break;
         }
       }
+
+      // Drive the left-to-right sweep WITHIN the active word (req 3). Progress
+      // is interpolated from the word's real duration, so a stretched (held)
+      // note sweeps slowly across its full window — composing with req 2.
+      if (wordIdx >= 0 && activeWordRef.current) {
+        const word = words[wordIdx];
+        const dur = word.endTimeMs - word.startTimeMs;
+        const progress =
+          dur > 0
+            ? Math.max(0, Math.min(1, (adjustedTimeMs - word.startTimeMs) / dur))
+            : 1;
+        activeWordRef.current.style.setProperty(
+          "--progress",
+          `${(progress * 100).toFixed(2)}%`,
+        );
+      }
     }
 
     // Update states only when they change to eliminate React rendering lag
@@ -285,7 +329,7 @@ export default function KaraokePlayer({
 
   return (
     <div className="relative h-screen w-screen overflow-hidden font-sans text-white select-none bg-[#0c060d]">
-      {/* CSS Stylesheet Injector for per-word karaoke highlighting */}
+      {/* CSS Stylesheet Injector for per-word + character-level highlighting */}
       <style>{`
         .lyric-word {
           display: inline-block;
@@ -301,10 +345,36 @@ export default function KaraokePlayer({
         .lyric-word-sung {
           color: #ffcf66;
         }
-        /* Currently being sung — brightest, with a soft glow */
+        /* Currently being sung — left-to-right character sweep driven by
+           --progress (set per animation frame from the word's real duration). */
         .lyric-word-active {
-          color: #ffe6a3;
-          text-shadow: 0 0 18px rgba(255, 207, 102, 0.85), 0 2px 4px rgba(0, 0, 0, 0.8);
+          background-image: linear-gradient(
+            to right,
+            #ffe6a3 var(--progress, 0%),
+            rgba(255, 255, 255, 0.4) var(--progress, 0%)
+          );
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+          /* text-shadow doesn't render under transparent fill — use filter */
+          filter: drop-shadow(0 0 12px rgba(255, 207, 102, 0.75))
+                  drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
+        }
+        /* Held / sustained note (req 2): gentle pulse so a long note reads as
+           sustained rather than a stalled sweep. */
+        .lyric-word-held {
+          animation: lyric-held-pulse 1.1s ease-in-out infinite;
+        }
+        @keyframes lyric-held-pulse {
+          0%, 100% {
+            filter: drop-shadow(0 0 10px rgba(255, 207, 102, 0.6))
+                    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
+          }
+          50% {
+            filter: drop-shadow(0 0 22px rgba(255, 224, 130, 0.95))
+                    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
+          }
         }
       `}</style>
 
@@ -416,16 +486,17 @@ export default function KaraokePlayer({
                   className={`${lyricSizeClass} flex flex-wrap items-center justify-center gap-x-[0.3em] uppercase leading-tight tracking-wide`}
                 >
                   {richsyncData[activeLine].words.map((word, wordIdx) => {
-                    const state =
-                      wordIdx < activeWord
-                        ? "sung"
-                        : wordIdx === activeWord
-                          ? "active"
-                          : "upcoming";
+                    const isActive = wordIdx === activeWord;
+                    const isSung = wordIdx < activeWord;
+                    const held =
+                      isActive &&
+                      isHeldNote(word.startTimeMs, word.endTimeMs, word.text);
+                    const state = isSung ? "sung" : isActive ? "active" : "upcoming";
                     return (
                       <span
                         key={wordIdx}
-                        className={`lyric-word lyric-word-${state}`}
+                        ref={isActive ? activeWordRef : undefined}
+                        className={`lyric-word lyric-word-${state}${held ? " lyric-word-held" : ""}`}
                       >
                         {word.text.trim()}
                       </span>
