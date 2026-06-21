@@ -1,4 +1,8 @@
-# Myusika
+<p align="center">
+  <img src="docs/readme/logo.png" width="280" alt="Myusika Logo" />
+</p>
+
+<h1 align="center">Myusika</h1>
 
 <p align="center">
   <strong>Search a song. Strip the vocals. Sing it karaoke-style.</strong>
