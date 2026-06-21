@@ -19,13 +19,11 @@ Myusika is a Filipino-culture karaoke/videoke web app, built for **Musicathon 20
 
 > **Judge links**
 >
-> - Demo video: _coming soon — recording pending_
-> - Pitch deck: _coming soon_
-> - Live deployment: not deployed — vocal separation (Demucs/WhisperX) runs as a
->   local Python process by design, so the full experience requires running
->   locally (see [Run Locally](#run-locally)). A deployed build still works for
->   browsing and the karaoke player, with a clear "run locally" message on upload.
-> - Screenshots: [see below](#screenshots)
+> - **Live deployment:** [https://thanreiz-musicathon.vercel.app](https://thanreiz-musicathon.vercel.app) *(fully functional end-to-end, including direct-to-cloud vocal separation!)*
+> - **GitHub Repository:** [https://github.com/thanreiz/musicathon](https://github.com/thanreiz/musicathon)
+> - **Demo video:** _coming soon — recording pending_
+> - **Pitch deck:** _coming soon_
+> - **Screenshots:** [see below](#screenshots)
 
 ---
 
