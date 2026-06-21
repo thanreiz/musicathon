@@ -77,68 +77,100 @@ function hasAllowedExtension(filename: string): boolean {
   return ALLOWED_EXTENSIONS.has(ext);
 }
 
-export async function POST(request: Request) {
-
+export async function GET(request: Request) {
   try {
-    const formData = await request.formData();
-    const file = formData.get("file");
-    const trackId = (formData.get("trackId") as string | null) ?? null;
+    const { searchParams } = new URL(request.url);
+    const trackId = searchParams.get("trackId");
+    const useLalal = shouldUseLalal(trackId);
 
-    // ── Validate presence ─────────────────────────────────────────────
-    if (!file || !(file instanceof File)) {
-      return Response.json(
-        { error: "No audio file provided. Please select a file to upload." },
-        { status: 400 },
-      );
+    return Response.json({
+      directUpload: useLalal,
+      lalalApiKey: useLalal ? (process.env.LALAL_API_KEY || "") : "",
+    });
+  } catch (error) {
+    console.error("[/api/upload] GET error:", error);
+    return Response.json({ directUpload: false, lalalApiKey: "" });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    let file: File | null = null;
+    let trackId: string | null = null;
+    let sourceId: string | null = null;
+
+    const contentType = request.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const json = await request.json();
+      trackId = json.trackId || null;
+      sourceId = json.sourceId || null;
+    } else {
+      const formData = await request.formData();
+      file = formData.get("file") as File | null;
+      trackId = (formData.get("trackId") as string | null) ?? null;
     }
 
-    // ── Validate file type ────────────────────────────────────────────
-    const mimeOk = ALLOWED_MIME_TYPES.has(file.type);
-    const extOk = hasAllowedExtension(file.name);
+    // ── Validate inputs ───────────────────────────────────────────────
+    if (!sourceId) {
+      if (!file || !(file instanceof File)) {
+        return Response.json(
+          { error: "No audio file provided. Please select a file to upload." },
+          { status: 400 },
+        );
+      }
 
-    if (!mimeOk && !extOk) {
-      return Response.json(
-        {
-          error:
-            `Unsupported file format "${file.name.split(".").pop() ?? "unknown"}". ` +
-            "Please upload an MP3, WAV, M4A, OGG, FLAC, or AAC file.",
-        },
-        { status: 400 },
-      );
-    }
+      // ── Validate file type ────────────────────────────────────────────
+      const mimeOk = ALLOWED_MIME_TYPES.has(file.type);
+      const extOk = hasAllowedExtension(file.name);
 
-    // ── Validate file size ────────────────────────────────────────────
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      return Response.json(
-        {
-          error:
-            `File is too large (${sizeMB} MB). ` +
-            "Maximum size is 20 MB. Try a shorter audio clip.",
-        },
-        { status: 400 },
-      );
-    }
+      if (!mimeOk && !extOk) {
+        return Response.json(
+          {
+            error:
+              `Unsupported file format "${file.name.split(".").pop() ?? "unknown"}". ` +
+              "Please upload an MP3, WAV, M4A, OGG, FLAC, or AAC file.",
+          },
+          { status: 400 },
+        );
+      }
 
-    if (file.size === 0) {
-      return Response.json(
-        { error: "The file appears to be empty. Please select a valid audio file." },
-        { status: 400 },
-      );
+      // ── Validate file size ────────────────────────────────────────────
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        return Response.json(
+          {
+            error:
+              `File is too large (${sizeMB} MB). ` +
+              "Maximum size is 20 MB. Try a shorter audio clip.",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (file.size === 0) {
+        return Response.json(
+          { error: "The file appears to be empty. Please select a valid audio file." },
+          { status: 400 },
+        );
+      }
     }
 
     // ── Vocal separation ──────────────────────────────────────────────
     // On Vercel: LALAL.AI handles ALL tracks (Demucs can't run in serverless).
-    // Locally: LALAL.AI is the primary path for the env-gated demo track;
+    // Locally: LALAL.AI is the primary path for the env-gated demo track or when sourceId is provided;
     // any failure/timeout falls back to Demucs. All other local tracks use
     // Demucs directly.
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
     let result = null as Awaited<ReturnType<typeof separateVocals>> | null;
-    if (shouldUseLalal(trackId)) {
-      console.log(`[/api/upload] Trying LALAL.AI for demo track ${trackId}`);
-      const lalal = await separateVocalsLalal(buffer, file.name);
+    if (sourceId || shouldUseLalal(trackId)) {
+      console.log(`[/api/upload] Trying LALAL.AI for track ${trackId} (hasSourceId: ${Boolean(sourceId)})`);
+      let buffer: Buffer | null = null;
+      let name: string | null = null;
+      if (file) {
+        const arrayBuffer = await file.arrayBuffer();
+        buffer = Buffer.from(arrayBuffer);
+        name = file.name;
+      }
+      const lalal = await separateVocalsLalal(buffer, name, sourceId);
       if (lalal.success) {
         result = lalal;
       } else {
@@ -147,14 +179,17 @@ export async function POST(request: Request) {
         );
       }
     }
-    if (!result) {
+
+    if (!result && file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
       result = await separateVocals(buffer, file.name);
     }
 
-    if (!result.success) {
+    if (!result || !result.success) {
       // Log the raw cause server-side; show the user a clean, generic message
       // (the raw error can contain Demucs stderr and absolute file paths).
-      console.error("[/api/upload] Separation failed:", result.error);
+      console.error("[/api/upload] Separation failed:", result?.error ?? "No result");
       return Response.json(
         {
           error:

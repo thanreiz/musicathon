@@ -105,11 +105,61 @@ export default function ConfirmTrackPage() {
     setUploadState({ phase: "processing" });
 
     try {
-      const body = new FormData();
-      body.append("file", file);
-      body.append("trackId", trackId);
+      // 1) Fetch preflight direct upload config
+      const preflightRes = await fetch(`/api/upload?trackId=${encodeURIComponent(trackId)}`);
+      if (!preflightRes.ok) {
+        throw new Error("Failed to initialize upload session.");
+      }
+      const preflight = await preflightRes.json() as {
+        directUpload: boolean;
+        lalalApiKey: string;
+      };
 
-      const res = await fetch("/api/upload", { method: "POST", body });
+      let res: Response;
+      if (preflight.directUpload && preflight.lalalApiKey) {
+        console.log("[confirm] Direct upload to LALAL.AI enabled. Uploading...");
+        // 2a) Upload directly to LALAL.AI
+        const lalalRes = await fetch("https://www.lalal.ai/api/v1/upload/", {
+          method: "POST",
+          headers: {
+            "X-License-Key": preflight.lalalApiKey,
+            "Content-Disposition": `attachment; filename="${encodeURIComponent(file.name)}"`,
+            "Content-Type": "application/octet-stream",
+          },
+          body: file,
+        });
+
+        if (!lalalRes.ok) {
+          let detail = `LALAL upload failed with status ${lalalRes.status}`;
+          try {
+            const body = await lalalRes.json() as { detail?: string };
+            if (body.detail) detail = body.detail;
+          } catch {}
+          throw new Error(detail);
+        }
+
+        const lalalData = await lalalRes.json() as { id: string };
+        if (!lalalData.id) {
+          throw new Error("LALAL upload did not return a source ID.");
+        }
+
+        // 2b) Send the source ID to our serverless endpoint
+        res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            trackId,
+            sourceId: lalalData.id,
+          }),
+        });
+      } else {
+        // Standard FormData upload (used locally / fallback)
+        const body = new FormData();
+        body.append("file", file);
+        body.append("trackId", trackId);
+        res = await fetch("/api/upload", { method: "POST", body });
+      }
+
       const data = (await res.json()) as {
         instrumentalUrl?: string;
         error?: string;
