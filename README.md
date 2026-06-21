@@ -21,8 +21,8 @@ Myusika is a Filipino-culture karaoke/videoke web app, built for **Musicathon 20
 >
 > - **Live deployment:** [https://thanreiz-musicathon.vercel.app](https://thanreiz-musicathon.vercel.app) *(fully functional end-to-end, including direct-to-cloud vocal separation!)*
 > - **GitHub Repository:** [https://github.com/thanreiz/musicathon](https://github.com/thanreiz/musicathon)
-> - **Demo video:** _coming soon — recording pending_
-> - **Pitch deck:** _coming soon_
+> - **Demo video:** [https://youtu.be/wriZY_uQ82U](https://youtu.be/wriZY_uQ82U)
+> - **Pitch deck:** [https://canva.link/z86ycokn4r0ij2l](https://canva.link/z86ycokn4r0ij2l)
 > - **Screenshots:** [see below](#screenshots)
 
 ---
