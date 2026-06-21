@@ -24,25 +24,18 @@ type TrackResponse = {
 type UploadState =
   | { phase: "idle" }
   | { phase: "uploading" }
-  | { phase: "processing"; taskId: string; progress: number }
+  | { phase: "processing" }
   | { phase: "complete"; instrumentalUrl: string }
   | { phase: "error"; message: string };
 
-// Friendly rotating status messages shown during LALAL.AI processing
+// Friendly rotating status messages shown during Demucs processing
 const PROCESSING_MESSAGES = [
   "Analyzing your audio…",
-  "Removing vocals…",
+  "Removing vocals with AI…",
   "Isolating the instrumental track…",
   "Still working — this can take a minute or two…",
   "Almost there…",
 ];
-
-/** Polling interval for status checks (ms). 4 s ≈ 15 req/min, well under
- *  LALAL.AI's 30 req/min rate limit on /check/. */
-const POLL_INTERVAL_MS = 4_000;
-
-/** Stop polling after this many attempts (75 × 4 s = 5 minutes). */
-const MAX_POLL_ATTEMPTS = 75;
 
 // ---------------------------------------------------------------------------
 // Page component
@@ -107,70 +100,7 @@ export default function ConfirmTrackPage() {
     phase: "idle",
   });
 
-  // ── Polling logic (processing phase) ──────────────────────────────
-  const pollCountRef = useRef(0);
-
-  const isProcessing = uploadState.phase === "processing";
-  const taskId = isProcessing ? (uploadState as { taskId: string }).taskId : undefined;
-
-  useEffect(() => {
-    if (!isProcessing || !taskId) {
-      pollCountRef.current = 0;
-      return;
-    }
-
-    const interval = setInterval(async () => {
-      pollCountRef.current += 1;
-
-      if (pollCountRef.current > MAX_POLL_ATTEMPTS) {
-        clearInterval(interval);
-        setUploadState({
-          phase: "error",
-          message:
-            "Processing is taking longer than expected. Please try again with a shorter audio clip.",
-        });
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/upload/status/${taskId}`);
-        const data = (await res.json()) as {
-          status: "processing" | "complete" | "error";
-          progress?: number;
-          instrumentalUrl?: string;
-          error?: string;
-        };
-
-        if (data.status === "complete" && data.instrumentalUrl) {
-          clearInterval(interval);
-          setUploadState({
-            phase: "complete",
-            instrumentalUrl: data.instrumentalUrl,
-          });
-        } else if (data.status === "error") {
-          clearInterval(interval);
-          setUploadState({
-            phase: "error",
-            message:
-              data.error ??
-              "Something went wrong during processing. Please try again.",
-          });
-        } else if (data.status === "processing") {
-          setUploadState({
-            phase: "processing",
-            taskId,
-            progress: data.progress ?? 0,
-          });
-        }
-      } catch {
-        // Network hiccup — don't fail immediately, keep polling
-      }
-    }, POLL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [isProcessing, taskId]);
-
-  // ── File upload handler ────────────────────────────────────────────
+  // ── File upload + Demucs separation (single request) ───────────────
   const handleFile = useCallback(async (file: File) => {
     setUploadState({ phase: "uploading" });
 
@@ -178,25 +108,27 @@ export default function ConfirmTrackPage() {
       const body = new FormData();
       body.append("file", file);
 
+      // Brief uploading phase, then switch to processing
+      setUploadState({ phase: "processing" });
+
       const res = await fetch("/api/upload", { method: "POST", body });
       const data = (await res.json()) as {
-        taskId?: string;
+        instrumentalUrl?: string;
         error?: string;
       };
 
-      if (!res.ok || !data.taskId) {
+      if (!res.ok || !data.instrumentalUrl) {
         setUploadState({
           phase: "error",
           message:
-            data.error ?? "Upload failed. Please check your file and try again.",
+            data.error ?? "Separation failed. Please check your file and try again.",
         });
         return;
       }
 
       setUploadState({
-        phase: "processing",
-        taskId: data.taskId,
-        progress: 0,
+        phase: "complete",
+        instrumentalUrl: data.instrumentalUrl,
       });
     } catch {
       setUploadState({
@@ -433,21 +365,18 @@ function AudioUploadZone({
   if (uploadState.phase === "processing") {
     return (
       <div className="rounded-[2rem] border border-[#ffcf66]/15 bg-[#0c060d]/80 p-8 text-center">
-        <ProcessingAnimation progress={uploadState.progress} />
+        <ProcessingAnimation progress={50} />
         <p className="mt-4 text-sm font-black uppercase tracking-[0.24em] text-[#ffb84d]">
           <RotatingText messages={PROCESSING_MESSAGES} intervalMs={5000} />
         </p>
         <div className="mx-auto mt-4 h-1.5 w-48 overflow-hidden rounded-full bg-[#ffcf66]/15">
           <div
-            className="h-full rounded-full bg-[#ffb84d] transition-all duration-700"
-            style={{ width: `${Math.max(uploadState.progress, 5)}%` }}
+            className="h-full animate-pulse rounded-full bg-[#ffb84d]"
+            style={{ width: "60%" }}
           />
         </div>
-        <p className="mt-2 text-xs text-[#ffe8c2]/45">
-          {uploadState.progress}% complete
-        </p>
         <p className="mx-auto mt-3 max-w-md text-xs leading-5 text-[#ffe8c2]/40">
-          Vocal removal typically takes 1–2 minutes. Please keep this page open.
+          Vocal removal typically takes 30–90 seconds. Please keep this page open.
         </p>
       </div>
     );

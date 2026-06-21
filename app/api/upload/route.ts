@@ -1,17 +1,8 @@
-import { uploadAndSplit } from "@/lib/api/lalal";
+// import { uploadAndSplit } from "@/lib/api/lalal";  // DISABLED — replaced by local Demucs
+import { separateVocals } from "@/lib/audio/separate";
 
 /**
  * Maximum file size: 20 MB.
- *
- * We cap at 20 MB because:
- *  - A typical 3-minute MP3 at 320 kbps is ~7 MB; 20 MB covers even
- *    uncompressed-ish formats for short clips.
- *  - LALAL.AI's own limit is 10 GB, so this is well within their bounds.
- *  - Vercel's Hobby tier has a 4.5 MB *request body* limit for serverless
- *    functions, so files > ~4.5 MB will fail on the deployed version (but
- *    work fine locally). We validate against 20 MB to catch truly huge
- *    files; Vercel's own limit will kick in before ours in production.
- *    This is documented in the upload UI so users know to keep clips short.
  */
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
@@ -96,12 +87,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── Upload to LALAL.AI and start split ────────────────────────────
+    // ── Run Demucs locally for vocal separation ───────────────────────
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const { taskId } = await uploadAndSplit(buffer, file.name);
+    const result = await separateVocals(buffer, file.name);
 
-    return Response.json({ taskId });
+    if (!result.success) {
+      return Response.json(
+        { error: result.error },
+        { status: 502 },
+      );
+    }
+
+    // Return the instrumental URL directly — no polling needed
+    return Response.json({
+      instrumentalUrl: result.instrumentalUrl,
+    });
   } catch (error) {
     console.error("[/api/upload] Error:", error);
 
