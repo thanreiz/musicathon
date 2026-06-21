@@ -28,6 +28,8 @@ const VIDEO_NAMES = [
   "Shopping Mall Bustle",
 ];
 
+const INSTRUMENTAL_GAP_THRESHOLD_MS = 4000; // 4 seconds threshold for instrumental break indication
+
 export default function KaraokePlayer({
   audioUrl,
   richsyncData,
@@ -47,10 +49,10 @@ export default function KaraokePlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [activeLine, setActiveLine] = useState(-1);
-  const [activeWord, setActiveWord] = useState(-1);
   const [semitoneShift, setSemitoneShift] = useState(0);
   const [playbackStatus, setPlaybackStatus] = useState<"before" | "during" | "after">("before");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isInstrumentalBreak, setIsInstrumentalBreak] = useState(false);
   
   // Persisted lyric font size setting
   const [lyricSize, setLyricSize] = useState<"small" | "medium" | "large">("medium");
@@ -145,22 +147,34 @@ export default function KaraokePlayer({
     [richsyncData],
   );
 
-  // ── Find active word in the current line ───────────────────────────
-  const findCurrentWord = useCallback(
-    (lineIndex: number, timeMs: number): number => {
-      if (lineIndex < 0 || lineIndex >= richsyncData.length) return -1;
+  // ── Check if currently in an instrumental break (Task 2) ───────────
+  const checkInstrumentalBreak = useCallback(
+    (timeMs: number): boolean => {
+      if (richsyncData.length === 0) return false;
 
-      const words = richsyncData[lineIndex]?.words;
-      if (!words || words.length === 0) return -1;
+      // 1. Intro check
+      const firstLineStart = richsyncData[0]?.words[0]?.startTimeMs ?? 0;
+      if (timeMs < firstLineStart) {
+        return firstLineStart >= INSTRUMENTAL_GAP_THRESHOLD_MS;
+      }
 
-      for (let i = words.length - 1; i >= 0; i--) {
-        if (timeMs >= words[i].startTimeMs) {
-          return i;
+      // 2. Inter-line gaps check
+      const lineIdx = findCurrentLine(timeMs);
+      if (lineIdx >= 0 && lineIdx < richsyncData.length - 1) {
+        const currentLine = richsyncData[lineIdx];
+        const nextLine = richsyncData[lineIdx + 1];
+        
+        const currentEnd = currentLine.words[currentLine.words.length - 1]?.endTimeMs ?? 0;
+        const nextStart = nextLine.words[0]?.startTimeMs ?? 0;
+        
+        if (nextStart - currentEnd >= INSTRUMENTAL_GAP_THRESHOLD_MS) {
+          return timeMs > currentEnd && timeMs < nextStart;
         }
       }
-      return -1;
+
+      return false;
     },
-    [richsyncData],
+    [richsyncData, findCurrentLine],
   );
 
   // ── Animation loop ─────────────────────────────────────────────────
@@ -181,29 +195,28 @@ export default function KaraokePlayer({
     const adjustedTimeMs = timeMs + syncOffsetMs;
 
     const lineIdx = findCurrentLine(adjustedTimeMs);
-    const wordIdx = findCurrentWord(lineIdx, adjustedTimeMs);
+    const inBreak = checkInstrumentalBreak(adjustedTimeMs);
 
     // Update states only when they change to eliminate React rendering lag
     setActiveLine((prev) => (prev !== lineIdx ? lineIdx : prev));
-    setActiveWord((prev) => (prev !== wordIdx ? wordIdx : prev));
+    setIsInstrumentalBreak((prev) => (prev !== inBreak ? inBreak : prev));
 
-    // Handle smooth visual sweep/fill progress directly on the rendered active word element in DOM
-    const activeWordEl = document.querySelector(".karaoke-word-active") as HTMLElement;
-    if (activeWordEl) {
-      const elLineIdx = parseInt(activeWordEl.getAttribute("data-line-idx") || "-1", 10);
-      const elWordIdx = parseInt(activeWordEl.getAttribute("data-word-idx") || "-1", 10);
-      if (elLineIdx >= 0 && elWordIdx >= 0) {
-        const activeWordData = richsyncData[elLineIdx]?.words[elWordIdx];
-        if (activeWordData) {
-          const wordStart = activeWordData.startTimeMs;
-          const wordEnd = activeWordData.endTimeMs;
-          const wordDuration = wordEnd - wordStart;
-          if (wordDuration > 0) {
-            const progress = Math.max(0, Math.min(1, (adjustedTimeMs - wordStart) / wordDuration));
-            activeWordEl.style.setProperty("--progress", `${progress * 100}%`);
-          } else {
-            activeWordEl.style.setProperty("--progress", "100%");
-          }
+    // Handle smooth visual highlighting directly on the active line element in DOM (Task 1)
+    const activeLineEl = document.getElementById("active-line-el");
+    if (activeLineEl && !inBreak) {
+      const elLineIdx = parseInt(activeLineEl.getAttribute("data-line-idx") || "-1", 10);
+      if (elLineIdx >= 0 && elLineIdx < richsyncData.length) {
+        const line = richsyncData[elLineIdx];
+        const lineStart = line.words[0]?.startTimeMs ?? 0;
+        const lineEnd = line.words[line.words.length - 1]?.endTimeMs ?? 0;
+        const isLit = adjustedTimeMs >= lineStart && adjustedTimeMs <= lineEnd;
+
+        if (isLit) {
+          activeLineEl.classList.add("lyric-line-lit");
+          activeLineEl.classList.remove("lyric-line-unlit");
+        } else {
+          activeLineEl.classList.add("lyric-line-unlit");
+          activeLineEl.classList.remove("lyric-line-lit");
         }
       }
     }
@@ -223,7 +236,7 @@ export default function KaraokePlayer({
     setPlaybackStatus((prev) => (prev !== status ? status : prev));
 
     animationRef.current = requestAnimationFrame(tick);
-  }, [findCurrentLine, findCurrentWord, richsyncData, syncOffsetMs, duration]);
+  }, [findCurrentLine, checkInstrumentalBreak, richsyncData, syncOffsetMs, duration]);
 
   // ── Start/stop animation loop when playing ─────────────────────────
   useEffect(() => {
@@ -280,9 +293,20 @@ export default function KaraokePlayer({
     }
 
     setActiveLine(-1);
-    setActiveWord(-1);
+    setIsInstrumentalBreak(false);
     setPlaybackStatus("before");
   }, []);
+
+  // Determine if the line is initially lit when rendering (Task 1)
+  let isLineLitInitial = false;
+  if (typeof window !== "undefined" && playbackStatus === "during" && activeLine >= 0) {
+    const audio = audioRef.current;
+    const timeMs = (audio ? audio.currentTime : 0) * 1000 + syncOffsetMs;
+    const line = richsyncData[activeLine];
+    const lineStart = line?.words[0]?.startTimeMs ?? 0;
+    const lineEnd = line?.words[line?.words.length - 1]?.endTimeMs ?? 0;
+    isLineLitInitial = timeMs >= lineStart && timeMs <= lineEnd;
+  }
 
   // Lyric sizes configuration classes map
   const lyricSizeClass = 
@@ -294,29 +318,20 @@ export default function KaraokePlayer({
 
   return (
     <div className="relative h-screen w-screen overflow-hidden font-sans text-white select-none bg-[#0c060d]">
-      {/* CSS Stylesheet Injector for smooth text gradient clipping */}
+      {/* CSS Stylesheet Injector for premium layout-stable line highlighting */}
       <style>{`
-        .karaoke-word {
-          display: inline-block;
+        .lyric-line {
           font-weight: 900;
-          color: rgba(255, 255, 255, 0.4);
-          -webkit-text-fill-color: rgba(255, 255, 255, 0.4);
-          transition: -webkit-text-fill-color 0.15s ease, color 0.15s ease;
+          text-align: center;
           text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+          transition: color 0.2s ease, text-shadow 0.2s ease;
         }
-        .karaoke-word-sung {
+        .lyric-line-unlit {
+          color: rgba(255, 255, 255, 0.35);
+        }
+        .lyric-line-lit {
           color: #ffcf66;
-          -webkit-text-fill-color: #ffcf66;
-          text-shadow: 0 0 16px rgba(255, 207, 102, 0.9), 0 2px 4px rgba(0, 0, 0, 0.9);
-        }
-        .karaoke-word-active {
-          background-image: linear-gradient(to right, #ffcf66 var(--progress, 0%), rgba(255, 255, 255, 0.4) var(--progress, 0%));
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          filter: drop-shadow(0 0 10px rgba(255, 207, 102, 0.8));
-          text-shadow: none;
-          transition: none !important; /* Prevent transition conflicts during sweep */
+          text-shadow: 0 0 16px rgba(255, 207, 102, 0.95), 0 2px 4px rgba(0, 0, 0, 0.9);
         }
       `}</style>
 
@@ -337,7 +352,7 @@ export default function KaraokePlayer({
       {/* ── Dark Gradient Legibility Overlay (z-index 10) ────────────────── */}
       <div className="absolute inset-0 z-10 h-full w-full bg-gradient-to-b from-black/50 via-black/30 to-black/85" />
 
-      {/* ── Top-Left Instrumental Badge (z-index 30) ─────────────────────── */}
+      {/* ── Top-Left Instrumental Badge (z-index 30 - Audio Source Indicator stays untouched) ── */}
       <div className="absolute top-6 left-6 z-30 flex items-center gap-2 rounded-full bg-black/40 border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-[#ffcf66] backdrop-blur-md shadow-lg">
         <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
         Instrumental Mode (AI Vocals Removed)
@@ -373,9 +388,15 @@ export default function KaraokePlayer({
               </p>
               {isPlaying && (
                 <div className="mt-6 flex justify-center">
-                  <span className="inline-block animate-pulse rounded-full bg-[#ffb84d]/20 px-6 py-2 text-sm font-bold uppercase tracking-wider text-[#ffcf66] border border-[#ffcf66]/30">
-                    Intro Playing…
-                  </span>
+                  {isInstrumentalBreak ? (
+                    <span className="inline-block animate-pulse rounded-full bg-[#ffb84d]/10 px-6 py-2 text-sm font-bold uppercase tracking-wider text-[#ffe8c2]/60 border border-white/10">
+                      ♪ Instrumental Intro ♪
+                    </span>
+                  ) : (
+                    <span className="inline-block animate-pulse rounded-full bg-[#ffb84d]/20 px-6 py-2 text-sm font-bold uppercase tracking-wider text-[#ffcf66] border border-[#ffcf66]/30">
+                      Intro Playing…
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -402,41 +423,31 @@ export default function KaraokePlayer({
 
           {/* ── Active Lyrics Area ────────────────────────────────────────── */}
           {playbackStatus === "during" && activeLine >= 0 && (
-            <div className="w-full text-center space-y-8">
+            <div className="w-full text-center space-y-8 animate-fade-in">
               
-              {/* CURRENT ACTIVE LINE (Large & Bold with Sweep-Fill and Dynamic Text Size) */}
-              <div className="min-h-[4rem] sm:min-h-[5rem] lg:min-h-[6rem] flex items-center justify-center">
-                <p className={`${lyricSizeClass} font-black leading-tight tracking-wide uppercase`}>
-                  {richsyncData[activeLine].words.map((word, wordIdx) => {
-                    let wordClass = "karaoke-word";
-                    let isWordActive = false;
-
-                    if (wordIdx < activeWord) {
-                      wordClass = "karaoke-word-sung";
-                    } else if (wordIdx === activeWord) {
-                      wordClass = "karaoke-word-active";
-                      isWordActive = true;
-                    }
-
-                    return (
-                      <span
-                        key={wordIdx}
-                        data-line-idx={activeLine}
-                        data-word-idx={wordIdx}
-                        id={isWordActive ? "active-word-el" : undefined}
-                        className={`${wordClass} mr-3 sm:mr-4`}
-                      >
-                        {word.text}
-                      </span>
-                    );
-                  })}
-                </p>
+              {/* CURRENT ACTIVE LINE (Task 1: single block, no word spans, no split rendering) */}
+              <div className="min-h-[4rem] sm:min-h-[5rem] lg:min-h-[6rem] flex items-center justify-center px-4">
+                {isInstrumentalBreak ? (
+                  <p className="text-xl sm:text-2xl md:text-3xl font-black italic tracking-widest text-[#ffe8c2]/50 animate-pulse uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                    ♪ Instrumental Break ♪
+                  </p>
+                ) : (
+                  <p
+                    id="active-line-el"
+                    data-line-idx={activeLine}
+                    className={`${lyricSizeClass} lyric-line ${
+                      isLineLitInitial ? "lyric-line-lit" : "lyric-line-unlit"
+                    } uppercase leading-tight tracking-wide`}
+                  >
+                    {richsyncData[activeLine].text}
+                  </p>
+                )}
               </div>
 
               {/* NEXT PREVIEW LINE (Smaller, Dimmer, Italicized) */}
               <div className="min-h-[2rem] sm:min-h-[3rem] flex items-center justify-center opacity-60">
                 {activeLine + 1 < richsyncData.length ? (
-                  <p className="text-lg font-bold italic tracking-wide text-[#ffe8c2]/60 sm:text-xl md:text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                  <p className="text-lg font-bold italic tracking-wide text-[#ffe8c2]/60 sm:text-xl md:text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] text-center px-4">
                     {richsyncData[activeLine + 1].text}
                   </p>
                 ) : (
@@ -454,7 +465,7 @@ export default function KaraokePlayer({
               <p className="text-xs font-black uppercase tracking-widest text-[#ffcf66]/40 mb-2">
                 Up Next
               </p>
-              <p className="text-lg font-bold italic text-[#ffe8c2]/65 drop-shadow-md">
+              <p className="text-lg font-bold italic text-[#ffe8c2]/65 drop-shadow-md text-center px-4">
                 {richsyncData[0].text}
               </p>
             </div>

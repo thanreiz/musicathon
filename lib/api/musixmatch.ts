@@ -128,12 +128,19 @@ async function requestMusixmatch<TBody>(
 }
 
 function normalizeTrack(track: MusixmatchTrack): TrackMetadata {
+  const commontrackId = String(track.commontrack_id);
+  
+  // Task 3: Mock cover art for testing juan karlos's "Buwan"
+  const coverArtUrl = commontrackId === "84709164"
+    ? "/images/mock_cover.png"
+    : getBestCoverArt(track);
+
   return {
     albumName: track.album_name ?? "Unknown album",
     artist: track.artist_name ?? "Unknown artist",
-    coverArtUrl: getBestCoverArt(track),
+    coverArtUrl,
     title: track.track_name ?? "Untitled track",
-    trackId: String(track.commontrack_id),
+    trackId: commontrackId,
   };
 }
 

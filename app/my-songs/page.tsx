@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { SongHistoryRecord } from "@/lib/types";
+import GeneratedCover from "@/components/GeneratedCover";
 
 function getDeviceId(): string {
   const KEY = "myusika_device_id";
@@ -140,21 +141,11 @@ export default function MySongsPage() {
                       width={400}
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#ffb84d]/20 to-[#120913]">
-                      <svg
-                        className="h-16 w-16 text-[#ffcf66]/30"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={1.5}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-                        />
-                      </svg>
-                    </div>
+                    <GeneratedCover
+                      title={song.title}
+                      artist={song.artist}
+                      className="h-full w-full object-cover"
+                    />
                   )}
                 </div>
                 <div className="p-4">
