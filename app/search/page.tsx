@@ -13,14 +13,9 @@ type SearchResponse = {
 };
 
 const SUGGESTED_SONGS = [
-  { title: "Buwan", artist: "Juan Karlos", query: "Buwan Juan Karlos" },
-  { title: "Dilaw", artist: "Maki", query: "Dilaw Maki" },
-  { title: "Cruel Summer", artist: "Taylor Swift", query: "Cruel Summer Taylor Swift" },
-  { title: "Bohemian Rhapsody", artist: "Queen", query: "Bohemian Rhapsody Queen" },
-  { title: "Dancing Queen", artist: "ABBA", query: "Dancing Queen ABBA" },
+  { title: "Perfect", artist: "Ed Sheeran", query: "Perfect Ed Sheeran" },
   { title: "Ang Huling El Bimbo", artist: "Eraserheads", query: "Ang Huling El Bimbo Eraserheads" },
   { title: "Fly Me to the Moon", artist: "Frank Sinatra", query: "Fly Me to the Moon Frank Sinatra" },
-  { title: "Perfect", artist: "Ed Sheeran", query: "Perfect Ed Sheeran" },
 ];
 
 export default function SearchPage() {
@@ -150,7 +145,7 @@ export default function SearchPage() {
               autoFocus
               className="h-14 w-full rounded-2xl border border-gold/25 bg-bg-deep px-5 text-base font-semibold text-foreground outline-none transition placeholder:text-cream/55 focus:border-amber focus:ring-4 focus:ring-amber/15"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Try “Buwan”, “Cruel Summer”, or “Dilaw”"
+              placeholder="Try “Perfect”, “Ang Huling El Bimbo”, or “Fly Me to the Moon”"
               type="search"
               value={query}
             />
