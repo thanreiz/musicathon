@@ -178,8 +178,8 @@ export default function ConfirmTrackPage() {
   return (
     <main className="min-h-screen bg-bg px-5 py-8 text-foreground sm:px-8">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-        <header className="flex items-center justify-between gap-4 border-b border-gold/10 pb-4">
-          <div className="flex items-center gap-3">
+        <header className="flex flex-wrap items-center justify-between gap-y-2 gap-x-3 border-b border-gold/10 pb-4">
+          <div className="flex items-center gap-3 whitespace-nowrap">
             <Link
               href="/"
               className="font-display text-2xl text-gold transition hover:text-gold-light"
@@ -195,22 +195,22 @@ export default function ConfirmTrackPage() {
                   router.push("/");
                 }
               }}
-              className="flex items-center gap-1 text-sm font-bold text-cream-light hover:text-gold transition"
+              className="flex items-center gap-1 text-sm font-bold text-cream-light hover:text-gold transition whitespace-nowrap"
             >
               ← Back
             </button>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 whitespace-nowrap">
             <Link
               href="/search"
-              className="text-xs font-bold uppercase tracking-[0.22em] text-cream/75 hover:text-gold transition"
+              className="text-xs font-bold uppercase tracking-[0.22em] text-cream/75 hover:text-gold transition whitespace-nowrap"
             >
               Search
             </Link>
             <span className="text-gold/30">|</span>
             <Link
               href="/my-songs"
-              className="text-xs font-bold uppercase tracking-[0.22em] text-cream/75 hover:text-gold transition"
+              className="text-xs font-bold uppercase tracking-[0.22em] text-cream/75 hover:text-gold transition whitespace-nowrap"
             >
               My Songs
             </Link>

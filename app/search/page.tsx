@@ -96,8 +96,8 @@ export default function SearchPage() {
   return (
     <main className="min-h-screen bg-bg px-5 py-8 text-foreground sm:px-8">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
-        <header className="flex items-center justify-between gap-4 border-b border-gold/10 pb-4">
-          <div className="flex items-center gap-3">
+        <header className="flex items-center justify-between gap-3 border-b border-gold/10 pb-4">
+          <div className="flex items-center gap-3 whitespace-nowrap">
             <Link
               href="/"
               className="font-display text-2xl text-gold transition hover:text-gold-light"
@@ -113,19 +113,19 @@ export default function SearchPage() {
                   router.push("/");
                 }
               }}
-              className="flex items-center gap-1 text-sm font-bold text-cream-light hover:text-gold transition"
+              className="flex items-center gap-1 text-sm font-bold text-cream-light hover:text-gold transition whitespace-nowrap"
             >
               ← Back
             </button>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-gold">
+          <div className="flex items-center gap-4 whitespace-nowrap">
+            <span className="hidden text-xs font-bold uppercase tracking-[0.22em] text-gold sm:inline">
               Search
             </span>
-            <span className="text-gold/30">|</span>
+            <span className="hidden text-gold/30 sm:inline">|</span>
             <Link
               href="/my-songs"
-              className="text-xs font-bold uppercase tracking-[0.22em] text-cream/75 hover:text-gold transition"
+              className="text-xs font-bold uppercase tracking-[0.22em] text-cream/75 hover:text-gold transition whitespace-nowrap"
             >
               My Songs
             </Link>
