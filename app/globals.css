@@ -5,15 +5,34 @@
   --foreground: #fff8eb;
 }
 
+/* Design tokens — see design-system/myusika/MASTER.md.
+   Declared directly in @theme (literal values, not aliases) so Tailwind
+   generates utilities (bg-gold, text-amber, ...) AND the same names stay
+   usable as var(--color-gold) in plain CSS / inline styles. */
+@theme {
+  --color-bg: #120913;
+  --color-bg-deep: #0c060d;
+  --color-surface: #1a0b10;
+  --color-surface-alt: #1f0d13;
+  --color-surface-hover: #281018;
+  --color-gold: #ffcf66;
+  --color-gold-hover: #ffd166;
+  --color-gold-light: #ffd98a;
+  --color-amber: #ffb84d;
+  --color-cream: #ffe8c2;
+  --color-cream-light: #ffefcf;
+  --font-display: var(--font-righteous);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-poppins);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-poppins), Arial, Helvetica, sans-serif;
 }

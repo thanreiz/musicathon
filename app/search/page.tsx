@@ -94,17 +94,17 @@ export default function SearchPage() {
     visibleResults.length === 0;
 
   return (
-    <main className="min-h-screen bg-[#120913] px-5 py-8 text-[#fff8eb] sm:px-8">
+    <main className="min-h-screen bg-bg px-5 py-8 text-foreground sm:px-8">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
-        <header className="flex items-center justify-between gap-4 border-b border-[#ffcf66]/10 pb-4">
+        <header className="flex items-center justify-between gap-4 border-b border-gold/10 pb-4">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="text-2xl font-black text-[#ffcf66] transition hover:text-[#ffd98a]"
+              className="font-display text-2xl text-gold transition hover:text-gold-light"
             >
               Myusika
             </Link>
-            <span className="text-[#ffcf66]/30">|</span>
+            <span className="text-gold/30">|</span>
             <button
               onClick={() => {
                 if (window.history.length > 1) {
@@ -113,31 +113,31 @@ export default function SearchPage() {
                   router.push("/");
                 }
               }}
-              className="flex items-center gap-1 text-sm font-bold text-[#ffefcf] hover:text-[#ffcf66] transition"
+              className="flex items-center gap-1 text-sm font-bold text-cream-light hover:text-gold transition"
             >
               ← Back
             </button>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffcf66]">
+            <span className="text-xs font-bold uppercase tracking-[0.22em] text-gold">
               Search
             </span>
-            <span className="text-[#ffcf66]/30">|</span>
+            <span className="text-gold/30">|</span>
             <Link
               href="/my-songs"
-              className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffe8c2]/75 hover:text-[#ffcf66] transition"
+              className="text-xs font-bold uppercase tracking-[0.22em] text-cream/75 hover:text-gold transition"
             >
               My Songs
             </Link>
           </div>
         </header>
 
-        <section className="rounded-[2rem] border border-[#ffcf66]/15 bg-[#1a0b10]/80 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-8">
+        <section className="rounded-[2rem] border border-gold/15 bg-surface/80 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-8">
           <div className="space-y-3">
-            <h1 className="text-4xl font-black leading-tight text-[#ffcf66] sm:text-5xl">
+            <h1 className="font-display text-4xl leading-tight text-gold sm:text-5xl">
               Find your song
             </h1>
-            <p className="max-w-2xl text-base leading-7 text-[#ffe8c2]/80">
+            <p className="max-w-2xl text-base leading-7 text-cream/80">
               Search by title or artist, then pick the exact track before we add
               your audio.
             </p>
@@ -148,7 +148,7 @@ export default function SearchPage() {
             <input
               autoComplete="off"
               autoFocus
-              className="h-14 w-full rounded-2xl border border-[#ffcf66]/25 bg-[#0c060d] px-5 text-base font-semibold text-[#fff8eb] outline-none transition placeholder:text-[#ffe8c2]/35 focus:border-[#ffb84d] focus:ring-4 focus:ring-[#ffb84d]/15"
+              className="h-14 w-full rounded-2xl border border-gold/25 bg-bg-deep px-5 text-base font-semibold text-foreground outline-none transition placeholder:text-cream/35 focus:border-amber focus:ring-4 focus:ring-amber/15"
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Try “Buwan”, “Cruel Summer”, or “Dilaw”"
               type="search"
@@ -178,19 +178,19 @@ export default function SearchPage() {
             <div className="grid gap-3">
               {visibleResults.map((track) => (
                 <Link
-                  className="group grid grid-cols-[4.5rem_1fr] gap-4 rounded-3xl border border-[#ffcf66]/12 bg-[#1f0d13]/85 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-[#ffb84d]/45 hover:bg-[#281018] active:translate-y-0"
+                  className="group grid grid-cols-[4.5rem_1fr] gap-4 rounded-3xl border border-gold/12 bg-surface-alt/85 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-amber/45 hover:bg-surface-hover active:translate-y-0"
                   href={`/confirm/${track.trackId}`}
                   key={track.trackId}
                 >
                   <TrackArtwork track={track} size={72} />
                   <div className="min-w-0 self-center">
-                    <h2 className="truncate text-base font-extrabold text-[#fff8eb] group-hover:text-[#ffcf66]">
+                    <h2 className="truncate text-base font-extrabold text-foreground group-hover:text-gold">
                       {track.title}
                     </h2>
-                    <p className="truncate text-sm font-semibold text-[#ffe8c2]/80">
+                    <p className="truncate text-sm font-semibold text-cream/80">
                       {track.artist}
                     </p>
-                    <p className="truncate text-xs font-medium uppercase tracking-wide text-[#ffe8c2]/45">
+                    <p className="truncate text-xs font-medium uppercase tracking-wide text-cream/45">
                       {track.albumName}
                     </p>
                   </div>
@@ -201,11 +201,11 @@ export default function SearchPage() {
 
           {!showLoading && !visibleError && trimmedQuery.length === 0 ? (
             <div className="space-y-6">
-              <div className="flex flex-col gap-1.5 border-l-4 border-[#ffcf66] pl-4">
-                <h2 className="text-xl font-black tracking-wider text-[#ffcf66] uppercase">
+              <div className="flex flex-col gap-1.5 border-l-4 border-gold pl-4">
+                <h2 className="text-xl font-black tracking-wider text-gold uppercase">
                   Browse the Songbook
                 </h2>
-                <p className="text-sm font-semibold text-[#ffe8c2]/55">
+                <p className="text-sm font-semibold text-cream/55">
                   Choose a favorite to load its lyrics and album cover instantly:
                 </p>
               </div>
@@ -218,19 +218,19 @@ export default function SearchPage() {
                       setQuery(song.query);
                       setDebouncedQuery(song.query);
                     }}
-                    className="flex flex-col gap-3 rounded-2xl border border-[#ffcf66]/12 bg-[#1f0d13]/85 p-4 text-left transition hover:-translate-y-0.5 hover:border-[#ffb84d]/45 hover:bg-[#281018] active:translate-y-0 shadow-[0_12px_36px_rgba(0,0,0,0.15)] group"
+                    className="flex flex-col gap-3 rounded-2xl border border-gold/12 bg-surface-alt/85 p-4 text-left transition hover:-translate-y-0.5 hover:border-amber/45 hover:bg-surface-hover active:translate-y-0 shadow-[0_12px_36px_rgba(0,0,0,0.15)] group"
                   >
                     {/* Mic Icon */}
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#ffb84d]/10 text-[#ffcf66] transition group-hover:bg-[#ffb84d]/20">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber/10 text-gold transition group-hover:bg-amber/20">
                       <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                       </svg>
                     </div>
                     <div className="min-w-0">
-                      <h3 className="truncate text-sm font-black text-[#fff8eb] group-hover:text-[#ffcf66]">
+                      <h3 className="truncate text-sm font-black text-foreground group-hover:text-gold">
                         {song.title}
                       </h3>
-                      <p className="truncate text-xs font-semibold text-[#ffe8c2]/60 mt-0.5">
+                      <p className="truncate text-xs font-semibold text-cream/60 mt-0.5">
                         {song.artist}
                       </p>
                     </div>
@@ -279,14 +279,14 @@ function SearchSkeleton() {
     <div className="grid gap-3">
       {[0, 1, 2].map((item) => (
         <div
-          className="grid animate-pulse grid-cols-[4.5rem_1fr] gap-4 rounded-3xl border border-[#ffcf66]/10 bg-[#1f0d13]/70 p-3"
+          className="grid animate-pulse grid-cols-[4.5rem_1fr] gap-4 rounded-3xl border border-gold/10 bg-surface-alt/70 p-3"
           key={item}
         >
-          <div className="h-[72px] w-[72px] rounded-2xl bg-[#ffcf66]/12" />
+          <div className="h-[72px] w-[72px] rounded-2xl bg-gold/12" />
           <div className="space-y-3 self-center">
-            <div className="h-4 w-2/3 rounded bg-[#ffcf66]/15" />
-            <div className="h-3 w-1/2 rounded bg-[#ffcf66]/10" />
-            <div className="h-3 w-1/3 rounded bg-[#ffcf66]/10" />
+            <div className="h-4 w-2/3 rounded bg-gold/15" />
+            <div className="h-3 w-1/2 rounded bg-gold/10" />
+            <div className="h-3 w-1/3 rounded bg-gold/10" />
           </div>
         </div>
       ))}
@@ -296,9 +296,9 @@ function SearchSkeleton() {
 
 function StateMessage({ message, title }: { message: string; title: string }) {
   return (
-    <div className="rounded-[2rem] border border-[#ffcf66]/12 bg-[#1a0b10]/70 p-8 text-center">
-      <h2 className="text-xl font-black text-[#ffcf66]">{title}</h2>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#ffe8c2]/70">
+    <div className="rounded-[2rem] border border-gold/12 bg-surface/70 p-8 text-center">
+      <h2 className="text-xl font-black text-gold">{title}</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-cream/70">
         {message}
       </p>
     </div>

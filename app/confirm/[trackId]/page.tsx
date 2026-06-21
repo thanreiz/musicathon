@@ -176,17 +176,17 @@ export default function ConfirmTrackPage() {
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
-    <main className="min-h-screen bg-[#120913] px-5 py-8 text-[#fff8eb] sm:px-8">
+    <main className="min-h-screen bg-bg px-5 py-8 text-foreground sm:px-8">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-        <header className="flex items-center justify-between gap-4 border-b border-[#ffcf66]/10 pb-4">
+        <header className="flex items-center justify-between gap-4 border-b border-gold/10 pb-4">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="text-2xl font-black text-[#ffcf66] transition hover:text-[#ffd98a]"
+              className="font-display text-2xl text-gold transition hover:text-gold-light"
             >
               Myusika
             </Link>
-            <span className="text-[#ffcf66]/30">|</span>
+            <span className="text-gold/30">|</span>
             <button
               onClick={() => {
                 if (window.history.length > 1) {
@@ -195,7 +195,7 @@ export default function ConfirmTrackPage() {
                   router.push("/");
                 }
               }}
-              className="flex items-center gap-1 text-sm font-bold text-[#ffefcf] hover:text-[#ffcf66] transition"
+              className="flex items-center gap-1 text-sm font-bold text-cream-light hover:text-gold transition"
             >
               ← Back
             </button>
@@ -203,14 +203,14 @@ export default function ConfirmTrackPage() {
           <div className="flex items-center gap-4">
             <Link
               href="/search"
-              className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffe8c2]/75 hover:text-[#ffcf66] transition"
+              className="text-xs font-bold uppercase tracking-[0.22em] text-cream/75 hover:text-gold transition"
             >
               Search
             </Link>
-            <span className="text-[#ffcf66]/30">|</span>
+            <span className="text-gold/30">|</span>
             <Link
               href="/my-songs"
-              className="text-xs font-bold uppercase tracking-[0.22em] text-[#ffe8c2]/75 hover:text-[#ffcf66] transition"
+              className="text-xs font-bold uppercase tracking-[0.22em] text-cream/75 hover:text-gold transition"
             >
               My Songs
             </Link>
@@ -220,11 +220,11 @@ export default function ConfirmTrackPage() {
         {showLoading ? <ConfirmSkeleton /> : null}
 
         {visibleError ? (
-          <section className="rounded-[2rem] border border-[#ffcf66]/12 bg-[#1a0b10]/80 p-8 text-center">
-            <h1 className="text-3xl font-black text-[#ffcf66]">
+          <section className="rounded-[2rem] border border-gold/12 bg-surface/80 p-8 text-center">
+            <h1 className="font-display text-3xl text-gold">
               Song not found
             </h1>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#ffe8c2]/75">
+            <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-cream/75">
               {visibleError}
             </p>
           </section>
@@ -232,7 +232,7 @@ export default function ConfirmTrackPage() {
 
         {!showLoading && !visibleError && track ? (
           <section className="grid gap-8 lg:grid-cols-[22rem_1fr] lg:items-start">
-            <div className="overflow-hidden rounded-[2rem] border border-[#ffcf66]/15 bg-[#1a0b10]/80 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
+            <div className="overflow-hidden rounded-[2rem] border border-gold/15 bg-surface/80 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
               {track.coverArtUrl ? (
                 <Image
                   alt={`${track.title} album art`}
@@ -252,16 +252,16 @@ export default function ConfirmTrackPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="rounded-[2rem] border border-[#ffcf66]/15 bg-[#1a0b10]/80 p-6 sm:p-8">
-                <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#ffb84d]">
+              <div className="rounded-[2rem] border border-gold/15 bg-surface/80 p-6 sm:p-8">
+                <p className="text-sm font-bold uppercase tracking-[0.24em] text-amber">
                   This is the right song
                 </p>
-                <h1 className="mt-4 text-4xl font-black leading-tight text-[#ffcf66] sm:text-5xl">
+                <h1 className="font-display mt-4 text-4xl leading-tight text-gold sm:text-5xl">
                   {track.title}
                 </h1>
-                <div className="mt-5 space-y-2 text-[#ffe8c2]/80">
+                <div className="mt-5 space-y-2 text-cream/80">
                   <p className="text-lg font-bold">{track.artist}</p>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-[#ffe8c2]/55">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-cream/55">
                     {track.albumName}
                   </p>
                 </div>
@@ -324,8 +324,8 @@ function AudioUploadZone({
         type="button"
         className={`group w-full cursor-pointer rounded-[2rem] border-2 border-dashed p-8 text-center transition-all ${
           isDragOver
-            ? "border-[#ffb84d] bg-[#ffb84d]/10"
-            : "border-[#ffcf66]/30 bg-[#0c060d]/80 hover:border-[#ffcf66]/60 hover:bg-[#0c060d]"
+            ? "border-amber bg-amber/10"
+            : "border-gold/30 bg-bg-deep/80 hover:border-gold/60 hover:bg-bg-deep"
         }`}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => {
@@ -336,9 +336,9 @@ function AudioUploadZone({
         onDrop={handleDrop}
       >
         {/* Upload icon */}
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#ffb84d]/15 transition group-hover:bg-[#ffb84d]/25">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber/15 transition group-hover:bg-amber/25">
           <svg
-            className="h-7 w-7 text-[#ffcf66]"
+            className="h-7 w-7 text-gold"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -352,14 +352,14 @@ function AudioUploadZone({
           </svg>
         </div>
 
-        <p className="text-sm font-black uppercase tracking-[0.24em] text-[#ffb84d]">
+        <p className="text-sm font-black uppercase tracking-[0.24em] text-amber">
           Upload your audio
         </p>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#ffe8c2]/70">
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-cream/70">
           Upload an audio file of this song so we can prepare your instrumental
           track. Drag &amp; drop or click to browse.
         </p>
-        <p className="mt-2 text-xs text-[#ffe8c2]/40">
+        <p className="mt-2 text-xs text-cream/40">
           MP3, WAV, M4A, OGG, FLAC — max 20 MB
         </p>
 
@@ -377,18 +377,18 @@ function AudioUploadZone({
   // ── Processing ─────────────────────────────────────────────────────
   if (uploadState.phase === "processing") {
     return (
-      <div className="rounded-[2rem] border border-[#ffcf66]/15 bg-[#0c060d]/80 p-8 text-center">
+      <div className="rounded-[2rem] border border-gold/15 bg-bg-deep/80 p-8 text-center">
         <ProcessingAnimation progress={50} />
-        <p className="mt-4 text-sm font-black uppercase tracking-[0.24em] text-[#ffb84d]">
+        <p className="mt-4 text-sm font-black uppercase tracking-[0.24em] text-amber">
           <RotatingText messages={PROCESSING_MESSAGES} intervalMs={5000} />
         </p>
-        <div className="mx-auto mt-4 h-1.5 w-48 overflow-hidden rounded-full bg-[#ffcf66]/15">
+        <div className="mx-auto mt-4 h-1.5 w-48 overflow-hidden rounded-full bg-gold/15">
           <div
-            className="h-full animate-pulse rounded-full bg-[#ffb84d]"
+            className="h-full animate-pulse rounded-full bg-amber"
             style={{ width: "60%" }}
           />
         </div>
-        <p className="mx-auto mt-3 max-w-md text-xs leading-5 text-[#ffe8c2]/40">
+        <p className="mx-auto mt-3 max-w-md text-xs leading-5 text-cream/40">
           Vocal removal typically takes 30–90 seconds. Please keep this page open.
         </p>
       </div>
@@ -398,7 +398,7 @@ function AudioUploadZone({
   // ── Complete ───────────────────────────────────────────────────────
   if (uploadState.phase === "complete") {
     return (
-      <div className="rounded-[2rem] border border-[#ffcf66]/15 bg-[#0c060d]/80 p-8 text-center">
+      <div className="rounded-[2rem] border border-gold/15 bg-bg-deep/80 p-8 text-center">
         {/* Success icon */}
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15">
           <svg
@@ -418,13 +418,13 @@ function AudioUploadZone({
         <p className="text-sm font-black uppercase tracking-[0.24em] text-emerald-400">
           Instrumental track ready!
         </p>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#ffe8c2]/65">
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-cream/65">
           We&rsquo;ve removed the vocals from your audio. Ready to start your
           karaoke session?
         </p>
         <button
           type="button"
-          className="mt-6 inline-flex h-12 items-center justify-center rounded-full bg-[#ffb84d] px-8 text-sm font-bold uppercase tracking-wide text-[#1a0b10] shadow-[0_14px_40px_rgba(255,184,77,0.28)] transition hover:bg-[#ffd166] focus:outline-none focus:ring-2 focus:ring-[#ffcf66] focus:ring-offset-2 focus:ring-offset-[#120913]"
+          className="mt-6 inline-flex h-12 items-center justify-center rounded-full bg-amber px-8 text-sm font-bold uppercase tracking-wide text-surface shadow-[0_14px_40px_rgba(255,184,77,0.28)] transition hover:bg-gold-hover focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-bg"
           onClick={onStartKaraoke}
         >
           Start Karaoke
@@ -435,7 +435,7 @@ function AudioUploadZone({
 
   // ── Error ──────────────────────────────────────────────────────────
   return (
-    <div className="rounded-[2rem] border border-red-500/25 bg-[#0c060d]/80 p-8 text-center">
+    <div className="rounded-[2rem] border border-red-500/25 bg-bg-deep/80 p-8 text-center">
       {/* Error icon */}
       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15">
         <svg
@@ -455,12 +455,12 @@ function AudioUploadZone({
       <p className="text-sm font-black uppercase tracking-[0.24em] text-red-400">
         Something went wrong
       </p>
-      <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#ffe8c2]/65">
+      <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-cream/65">
         {uploadState.message}
       </p>
       <button
         type="button"
-        className="mt-6 inline-flex h-10 items-center justify-center rounded-full border border-[#ffcf66]/35 px-6 text-sm font-bold uppercase tracking-wide text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
+        className="mt-6 inline-flex h-10 items-center justify-center rounded-full border border-gold/35 px-6 text-sm font-bold uppercase tracking-wide text-cream-light transition hover:border-gold hover:bg-gold/10"
         onClick={onRetry}
       >
         Try again
@@ -476,15 +476,15 @@ function AudioUploadZone({
 function ConfirmSkeleton() {
   return (
     <section className="grid animate-pulse gap-8 lg:grid-cols-[22rem_1fr]">
-      <div className="aspect-square rounded-[2rem] bg-[#ffcf66]/10" />
+      <div className="aspect-square rounded-[2rem] bg-gold/10" />
       <div className="space-y-6">
-        <div className="rounded-[2rem] border border-[#ffcf66]/10 bg-[#1a0b10]/70 p-8">
-          <div className="h-4 w-40 rounded bg-[#ffcf66]/15" />
-          <div className="mt-5 h-10 w-2/3 rounded bg-[#ffcf66]/15" />
-          <div className="mt-5 h-5 w-1/2 rounded bg-[#ffcf66]/10" />
-          <div className="mt-3 h-4 w-1/3 rounded bg-[#ffcf66]/10" />
+        <div className="rounded-[2rem] border border-gold/10 bg-surface/70 p-8">
+          <div className="h-4 w-40 rounded bg-gold/15" />
+          <div className="mt-5 h-10 w-2/3 rounded bg-gold/15" />
+          <div className="mt-5 h-5 w-1/2 rounded bg-gold/10" />
+          <div className="mt-3 h-4 w-1/3 rounded bg-gold/10" />
         </div>
-        <div className="h-40 rounded-[2rem] border border-dashed border-[#ffcf66]/20 bg-[#0c060d]/70" />
+        <div className="h-40 rounded-[2rem] border border-dashed border-gold/20 bg-bg-deep/70" />
       </div>
     </section>
   );
@@ -509,7 +509,7 @@ function ProcessingAnimation({ progress }: { progress: number }) {
           cy="40"
           r="36"
           fill="none"
-          stroke="#ffb84d"
+          stroke="var(--color-amber)"
           strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray={`${(progress / 100) * 226} 226`}
@@ -518,7 +518,7 @@ function ProcessingAnimation({ progress }: { progress: number }) {
       </svg>
       {/* Inner pulsing dot */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="h-4 w-4 animate-pulse rounded-full bg-[#ffb84d]/60" />
+        <div className="h-4 w-4 animate-pulse rounded-full bg-amber/60" />
       </div>
     </div>
   );

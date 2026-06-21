@@ -331,7 +331,7 @@ export default function KaraokePlayer({
         : "text-3xl sm:text-4xl md:text-5xl lg:text-6xl"; // medium
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden font-sans text-white select-none bg-[#0c060d]">
+    <div className="relative h-screen w-screen overflow-hidden font-sans text-white select-none bg-bg-deep">
       {/* CSS Stylesheet Injector for per-word + character-level highlighting */}
       <style>{`
         .lyric-word {
@@ -346,14 +346,14 @@ export default function KaraokePlayer({
         }
         /* Already sung */
         .lyric-word-sung {
-          color: #ffcf66;
+          color: var(--color-gold);
         }
         /* Currently being sung — left-to-right character sweep driven by
            --progress (set per animation frame from the word's real duration). */
         .lyric-word-active {
           background-image: linear-gradient(
             to right,
-            #ffe6a3 var(--progress, 0%),
+            var(--color-gold-light) var(--progress, 0%),
             rgba(255, 255, 255, 0.4) var(--progress, 0%)
           );
           -webkit-background-clip: text;
@@ -382,7 +382,7 @@ export default function KaraokePlayer({
       `}</style>
 
       {/* ── Background Video Backdrop (z-index 0) ────────────────────── */}
-      <div className="absolute inset-0 z-0 h-full w-full overflow-hidden bg-[#0c060d]">
+      <div className="absolute inset-0 z-0 h-full w-full overflow-hidden bg-bg-deep">
         <video
           key={BACKGROUND_VIDEOS[videoIndex]}
           autoPlay
@@ -404,7 +404,7 @@ export default function KaraokePlayer({
           <p className="text-sm font-bold text-red-300">
             Couldn&apos;t load the instrumental audio.
           </p>
-          <p className="mt-1 text-xs text-[#ffe8c2]/60">
+          <p className="mt-1 text-xs text-cream/60">
             The track file may be missing — try re-uploading the song.
           </p>
         </div>
@@ -412,7 +412,7 @@ export default function KaraokePlayer({
 
       {/* ── Top-Left Badges (z-index 30) ─────────────────────────────────── */}
       <div className="absolute top-6 left-6 z-30 flex flex-col items-start gap-2">
-        <div className="flex items-center gap-2 rounded-full bg-black/40 border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-[#ffcf66] backdrop-blur-md shadow-lg">
+        <div className="flex items-center gap-2 rounded-full bg-black/40 border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-gold backdrop-blur-md shadow-lg">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
           Instrumental Mode (AI Vocals Removed)
         </div>
@@ -434,7 +434,7 @@ export default function KaraokePlayer({
       <button
         type="button"
         onClick={() => setIsDrawerOpen(true)}
-        className="absolute top-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-black/40 border border-white/10 text-white backdrop-blur-md transition hover:bg-black/60 hover:border-[#ffcf66]/50 shadow-lg"
+        className="absolute top-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-black/40 border border-white/10 text-white backdrop-blur-md transition hover:bg-black/60 hover:border-gold/50 shadow-lg"
         title="Open Settings Menu"
       >
         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -449,23 +449,23 @@ export default function KaraokePlayer({
           {/* State 1: Before Song Starts */}
           {playbackStatus === "before" && (
             <div className="mb-10 text-center animate-fade-in">
-              <span className="text-xs font-black uppercase tracking-[0.3em] text-[#ffcf66] drop-shadow-md">
+              <span className="text-xs font-black uppercase tracking-[0.3em] text-gold drop-shadow-md">
                 Get Ready to Sing
               </span>
-              <h1 className="mt-3 text-4xl font-black uppercase tracking-wider text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] sm:text-5xl lg:text-6xl">
+              <h1 className="font-display mt-3 text-4xl uppercase tracking-wider text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] sm:text-5xl lg:text-6xl">
                 {trackTitle}
               </h1>
-              <p className="mt-2 text-lg font-bold text-[#ffe8c2]/80 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              <p className="mt-2 text-lg font-bold text-cream/80 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                 {trackArtist}
               </p>
               {isPlaying && (
                 <div className="mt-6 flex justify-center">
                   {isInstrumentalBreak ? (
-                    <span className="inline-block animate-pulse rounded-full bg-[#ffb84d]/10 px-6 py-2 text-sm font-bold uppercase tracking-wider text-[#ffe8c2]/60 border border-white/10">
+                    <span className="inline-block animate-pulse rounded-full bg-amber/10 px-6 py-2 text-sm font-bold uppercase tracking-wider text-cream/60 border border-white/10">
                       ♪ Instrumental Intro ♪
                     </span>
                   ) : (
-                    <span className="inline-block animate-pulse rounded-full bg-[#ffb84d]/20 px-6 py-2 text-sm font-bold uppercase tracking-wider text-[#ffcf66] border border-[#ffcf66]/30">
+                    <span className="inline-block animate-pulse rounded-full bg-amber/20 px-6 py-2 text-sm font-bold uppercase tracking-wider text-gold border border-gold/30">
                       Intro Playing…
                     </span>
                   )}
@@ -480,13 +480,13 @@ export default function KaraokePlayer({
               <span className="text-5xl sm:text-6xl lg:text-7xl font-black text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.6)]">
                 🎉 GREAT JOB!
               </span>
-              <p className="mt-3 text-lg font-bold text-[#ffe8c2]/80 drop-shadow-md">
+              <p className="mt-3 text-lg font-bold text-cream/80 drop-shadow-md">
                 You just sang "{trackTitle}"
               </p>
               <button
                 type="button"
                 onClick={restart}
-                className="mt-6 rounded-full bg-[#ffb84d] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-[#1a0b10] shadow-lg transition hover:bg-[#ffd166]"
+                className="mt-6 rounded-full bg-amber px-6 py-2.5 text-xs font-black uppercase tracking-wider text-surface shadow-lg transition hover:bg-gold-hover"
               >
                 Sing Again
               </button>
@@ -501,7 +501,7 @@ export default function KaraokePlayer({
                   just-sung line stays visible (held) underneath. */}
               {isInstrumentalBreak && (
                 <div className="flex justify-center">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-black/40 border border-[#ffcf66]/30 px-5 py-1.5 text-xs sm:text-sm font-black uppercase tracking-[0.25em] text-[#ffcf66] backdrop-blur-md animate-pulse">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-black/40 border border-gold/30 px-5 py-1.5 text-xs sm:text-sm font-black uppercase tracking-[0.25em] text-gold backdrop-blur-md animate-pulse">
                     ♪ Instrumental Break ♪
                   </span>
                 </div>
@@ -537,11 +537,11 @@ export default function KaraokePlayer({
               {/* NEXT PREVIEW LINE (Smaller, Dimmer, Italicized) */}
               <div className="min-h-[2rem] sm:min-h-[3rem] flex items-center justify-center opacity-60">
                 {activeLine + 1 < richsyncData.length ? (
-                  <p className="text-lg font-bold italic tracking-wide text-[#ffe8c2]/60 sm:text-xl md:text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] text-center px-4">
+                  <p className="text-lg font-bold italic tracking-wide text-cream/60 sm:text-xl md:text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] text-center px-4">
                     {richsyncData[activeLine + 1].text}
                   </p>
                 ) : (
-                  <p className="text-sm font-bold tracking-widest text-[#ffcf66]/30 uppercase">
+                  <p className="text-sm font-bold tracking-widest text-gold/30 uppercase">
                     Instrumental Outro
                   </p>
                 )}
@@ -552,10 +552,10 @@ export default function KaraokePlayer({
           {/* Fallback Preview when playbackStatus is "before" */}
           {playbackStatus === "before" && richsyncData.length > 0 && (
             <div className="mt-8 opacity-40 text-center">
-              <p className="text-xs font-black uppercase tracking-widest text-[#ffcf66]/40 mb-2">
+              <p className="text-xs font-black uppercase tracking-widest text-gold/40 mb-2">
                 Up Next
               </p>
-              <p className="text-lg font-bold italic text-[#ffe8c2]/65 drop-shadow-md text-center px-4">
+              <p className="text-lg font-bold italic text-cream/65 drop-shadow-md text-center px-4">
                 {richsyncData[0].text}
               </p>
             </div>
@@ -568,7 +568,7 @@ export default function KaraokePlayer({
       <button
         type="button"
         onClick={togglePlayback}
-        className="absolute bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black/40 border border-white/10 text-white backdrop-blur-md shadow-2xl transition hover:bg-black/60 hover:border-[#ffcf66]/50 active:scale-95"
+        className="absolute bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black/40 border border-white/10 text-white backdrop-blur-md shadow-2xl transition hover:bg-black/60 hover:border-gold/50 active:scale-95"
         title={isPlaying ? "Pause" : "Play"}
       >
         {isPlaying ? (
@@ -587,7 +587,7 @@ export default function KaraokePlayer({
       <div className="absolute bottom-0 left-0 z-30 h-1.5 w-full bg-white/10">
         <div
           ref={progressIndicatorRef}
-          className="h-full bg-[#ffb84d] shadow-[0_0_8px_#ffb84d] transition-all duration-100"
+          className="h-full bg-amber shadow-[0_0_8px_var(--color-amber)] transition-all duration-100"
           style={{ width: "0%" }}
         />
       </div>
@@ -602,12 +602,12 @@ export default function KaraokePlayer({
           />
 
           {/* Drawer Sidebar */}
-          <div className="fixed top-0 right-0 z-50 h-full w-80 max-w-[85vw] bg-[#0c060d]/95 border-l border-[#ffcf66]/20 p-6 flex flex-col justify-between shadow-2xl overflow-y-auto">
+          <div className="fixed top-0 right-0 z-50 h-full w-80 max-w-[85vw] bg-bg-deep/95 border-l border-gold/20 p-6 flex flex-col justify-between shadow-2xl overflow-y-auto">
             <div className="flex flex-col gap-6">
               
               {/* Drawer Header */}
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                <h3 className="text-lg font-black uppercase tracking-wider text-[#ffcf66]">
+                <h3 className="text-lg font-black uppercase tracking-wider text-gold">
                   Karaoke Deck
                 </h3>
                 <button
@@ -624,7 +624,7 @@ export default function KaraokePlayer({
 
               {/* Controls: Pitch Transposition */}
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#ffe8c2]/50">
+                <span className="text-xs font-bold uppercase tracking-wider text-cream/50">
                   Transpose (Key Shift)
                 </span>
                 <div className="flex items-center gap-2">
@@ -654,7 +654,7 @@ export default function KaraokePlayer({
 
               {/* Controls: Lyric Sync Offset */}
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#ffe8c2]/50">
+                <span className="text-xs font-bold uppercase tracking-wider text-cream/50">
                   Lyric Timing Calibration
                 </span>
                 <div className="flex items-center gap-2">
@@ -697,7 +697,7 @@ export default function KaraokePlayer({
 
               {/* Controls: Lyric Text Size Settings */}
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#ffe8c2]/50">
+                <span className="text-xs font-bold uppercase tracking-wider text-cream/50">
                   Lyric Text Size
                 </span>
                 <div className="flex items-center gap-1.5">
@@ -711,7 +711,7 @@ export default function KaraokePlayer({
                       }}
                       className={`flex-1 h-10 rounded-xl border text-xs font-bold uppercase transition ${
                         lyricSize === size
-                          ? "bg-[#ffcf66]/10 border-[#ffcf66] text-[#ffcf66]"
+                          ? "bg-gold/10 border-gold text-gold"
                           : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10"
                       }`}
                     >
@@ -723,7 +723,7 @@ export default function KaraokePlayer({
 
               {/* Controls: Background Video */}
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#ffe8c2]/50">
+                <span className="text-xs font-bold uppercase tracking-wider text-cream/50">
                   Select Video Backdrop
                 </span>
                 <div className="flex flex-col gap-1.5">
@@ -734,7 +734,7 @@ export default function KaraokePlayer({
                       onClick={() => setVideoIndex(idx)}
                       className={`w-full h-10 rounded-xl border text-xs font-bold text-left px-4 transition ${
                         videoIndex === idx
-                          ? "bg-[#ffcf66]/10 border-[#ffcf66] text-[#ffcf66]"
+                          ? "bg-gold/10 border-gold text-gold"
                           : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10"
                       }`}
                     >
@@ -754,7 +754,7 @@ export default function KaraokePlayer({
                   setIsDrawerOpen(false);
                   router.push("/search");
                 }}
-                className="w-full h-11 rounded-xl bg-[#ffb84d] text-sm font-black uppercase tracking-wider text-[#1a0b10] flex items-center justify-center transition hover:bg-[#ffd166]"
+                className="w-full h-11 rounded-xl bg-amber text-sm font-black uppercase tracking-wider text-surface flex items-center justify-center transition hover:bg-gold-hover"
               >
                 Back to Search
               </button>
