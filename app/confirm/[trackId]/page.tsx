@@ -130,6 +130,33 @@ export default function ConfirmTrackPage() {
         phase: "complete",
         instrumentalUrl: data.instrumentalUrl,
       });
+
+      // Auto-save to library when processing completes successfully
+      if (track) {
+        try {
+          const KEY = "myusika_device_id";
+          let deviceId = localStorage.getItem(KEY);
+          if (!deviceId) {
+            deviceId = crypto.randomUUID();
+            localStorage.setItem(KEY, deviceId);
+          }
+
+          void fetch("/api/history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              deviceId,
+              trackId,
+              title: track.title,
+              artist: track.artist,
+              coverArtUrl: track.coverArtUrl,
+              instrumentalUrl: data.instrumentalUrl,
+            }),
+          });
+        } catch {
+          // Saving history is best-effort
+        }
+      }
     } catch {
       setUploadState({
         phase: "error",
@@ -137,40 +164,14 @@ export default function ConfirmTrackPage() {
           "Could not connect to the server. Check your connection and try again.",
       });
     }
-  }, []);
+  }, [track, trackId]);
 
   // ── Navigate to karaoke ────────────────────────────────────────────
   const handleStartKaraoke = useCallback(() => {
-    if (uploadState.phase !== "complete" || !track) return;
-
-    // Save to history (fire-and-forget — don't block navigation)
-    try {
-      const KEY = "myusika_device_id";
-      let deviceId = localStorage.getItem(KEY);
-      if (!deviceId) {
-        deviceId = crypto.randomUUID();
-        localStorage.setItem(KEY, deviceId);
-      }
-
-      void fetch("/api/history", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          deviceId,
-          trackId,
-          title: track.title,
-          artist: track.artist,
-          coverArtUrl: track.coverArtUrl,
-          instrumentalUrl: uploadState.instrumentalUrl,
-        }),
-      });
-    } catch {
-      // Saving history is best-effort
-    }
-
+    if (uploadState.phase !== "complete") return;
     const url = `/karaoke/${trackId}?instrumentalUrl=${encodeURIComponent(uploadState.instrumentalUrl)}`;
     router.push(url);
-  }, [router, track, trackId, uploadState]);
+  }, [router, trackId, uploadState]);
 
   // ── Render ─────────────────────────────────────────────────────────
   return (
