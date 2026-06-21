@@ -231,7 +231,7 @@ export default function ConfirmTrackPage() {
         ) : null}
 
         {!showLoading && !visibleError && track ? (
-          <section className="grid gap-8 lg:grid-cols-[22rem_1fr] lg:items-start">
+          <section className="grid grid-cols-1 gap-8 lg:grid-cols-[22rem_1fr] lg:items-start">
             <div className="overflow-hidden rounded-[2rem] border border-gold/15 bg-surface/80 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
               {track.coverArtUrl ? (
                 <Image
@@ -359,7 +359,7 @@ function AudioUploadZone({
           Upload an audio file of this song so we can prepare your instrumental
           track. Drag &amp; drop or click to browse.
         </p>
-        <p className="mt-2 text-xs text-cream/40">
+        <p className="mt-2 text-xs text-cream/55">
           MP3, WAV, M4A, OGG, FLAC — max 20 MB
         </p>
 
@@ -388,7 +388,7 @@ function AudioUploadZone({
             style={{ width: "60%" }}
           />
         </div>
-        <p className="mx-auto mt-3 max-w-md text-xs leading-5 text-cream/40">
+        <p className="mx-auto mt-3 max-w-md text-xs leading-5 text-cream/55">
           Vocal removal typically takes 30–90 seconds. Please keep this page open.
         </p>
       </div>
@@ -475,7 +475,7 @@ function AudioUploadZone({
 
 function ConfirmSkeleton() {
   return (
-    <section className="grid animate-pulse gap-8 lg:grid-cols-[22rem_1fr]">
+    <section className="grid grid-cols-1 animate-pulse gap-8 lg:grid-cols-[22rem_1fr]">
       <div className="aspect-square rounded-[2rem] bg-gold/10" />
       <div className="space-y-6">
         <div className="rounded-[2rem] border border-gold/10 bg-surface/70 p-8">

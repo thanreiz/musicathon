@@ -148,7 +148,7 @@ export default function SearchPage() {
             <input
               autoComplete="off"
               autoFocus
-              className="h-14 w-full rounded-2xl border border-gold/25 bg-bg-deep px-5 text-base font-semibold text-foreground outline-none transition placeholder:text-cream/35 focus:border-amber focus:ring-4 focus:ring-amber/15"
+              className="h-14 w-full rounded-2xl border border-gold/25 bg-bg-deep px-5 text-base font-semibold text-foreground outline-none transition placeholder:text-cream/55 focus:border-amber focus:ring-4 focus:ring-amber/15"
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Try “Buwan”, “Cruel Summer”, or “Dilaw”"
               type="search"
@@ -191,7 +191,7 @@ export default function SearchPage() {
                     <p className="truncate text-sm font-semibold text-cream/80">
                       {track.artist}
                     </p>
-                    <p className="truncate text-xs font-medium uppercase tracking-wide text-cream/45">
+                    <p className="truncate text-xs font-medium uppercase tracking-wide text-cream/55">
                       {track.albumName}
                     </p>
                   </div>

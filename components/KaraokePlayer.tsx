@@ -515,13 +515,17 @@ export default function KaraokePlayer({
               </div>
 
               {/* NEXT PREVIEW LINE (Smaller, Dimmer, Italicized) */}
-              <div className="min-h-[2rem] sm:min-h-[3rem] flex items-center justify-center opacity-60">
+              {/* Opacity lives only on this wrapper (not also on the text
+                  color) — stacking text-color alpha on top of a parent
+                  opacity compounds multiplicatively and silently fails
+                  WCAG contrast (was ~1.5:1, needs 4.5:1). */}
+              <div className="min-h-[2rem] sm:min-h-[3rem] flex items-center justify-center opacity-70">
                 {activeLine + 1 < richsyncData.length ? (
-                  <p className="text-lg font-bold italic tracking-wide text-cream/60 sm:text-xl md:text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] text-center px-4">
+                  <p className="text-lg font-bold italic tracking-wide text-cream sm:text-xl md:text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] text-center px-4">
                     {richsyncData[activeLine + 1].text}
                   </p>
                 ) : (
-                  <p className="text-sm font-bold tracking-widest text-gold/30 uppercase">
+                  <p className="text-sm font-bold tracking-widest text-gold uppercase">
                     Instrumental Outro
                   </p>
                 )}
@@ -531,11 +535,11 @@ export default function KaraokePlayer({
 
           {/* Fallback Preview when playbackStatus is "before" */}
           {playbackStatus === "before" && richsyncData.length > 0 && (
-            <div className="mt-8 opacity-40 text-center">
-              <p className="text-xs font-black uppercase tracking-widest text-gold/40 mb-2">
+            <div className="mt-8 opacity-60 text-center">
+              <p className="text-xs font-black uppercase tracking-widest text-gold mb-2">
                 Up Next
               </p>
-              <p className="text-lg font-bold italic text-cream/65 drop-shadow-md text-center px-4">
+              <p className="text-lg font-bold italic text-cream drop-shadow-md text-center px-4">
                 {richsyncData[0].text}
               </p>
             </div>
