@@ -40,6 +40,20 @@ function hasAllowedExtension(filename: string): boolean {
 }
 
 export async function POST(request: Request) {
+  // Vocal separation runs Demucs as a local child process (python3 + ffmpeg),
+  // which isn't available on Vercel's serverless runtime. Degrade gracefully
+  // with a clear message instead of leaking a "spawn python3 ENOENT" error.
+  if (process.env.VERCEL) {
+    return Response.json(
+      {
+        error:
+          "Audio upload & vocal removal run in the local demo environment only " +
+          "(they need on-device AI processing). Please run Myusika locally to upload songs.",
+      },
+      { status: 503 },
+    );
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file");
@@ -93,8 +107,14 @@ export async function POST(request: Request) {
     const result = await separateVocals(buffer, file.name);
 
     if (!result.success) {
+      // Log the raw cause server-side; show the user a clean, generic message
+      // (the raw error can contain Demucs stderr and absolute file paths).
+      console.error("[/api/upload] Separation failed:", result.error);
       return Response.json(
-        { error: result.error },
+        {
+          error:
+            "We couldn't remove the vocals from this file. Please try a different audio file.",
+        },
         { status: 502 },
       );
     }
@@ -106,15 +126,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[/api/upload] Error:", error);
 
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred.";
-
     return Response.json(
-      {
-        error:
-          "We could not process your upload right now. Please try again. " +
-          `(${message})`,
-      },
+      { error: "We could not process your upload right now. Please try again." },
       { status: 502 },
     );
   }

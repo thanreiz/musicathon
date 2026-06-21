@@ -90,13 +90,6 @@ export default function KaraokePlayer({
     }
   }, []);
 
-  // ── Format time ────────────────────────────────────────────────────
-  const formatTime = useCallback((seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  }, []);
-
   // ── Binary search for current line (defensive check for empty words) ─
   const findCurrentLine = useCallback(
     (timeMs: number): number => {

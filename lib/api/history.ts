@@ -9,7 +9,6 @@ const LOCAL_DB_DIR = path.join(process.cwd(), ".demucs-tmp");
 const LOCAL_DB_PATH = path.join(LOCAL_DB_DIR, "local_history.json");
 
 async function saveToLocalJSON(record: Omit<SongHistoryRecord, "id" | "createdAt">): Promise<void> {
-  console.log("[DB LOCAL] Invoking saveToLocalJSON with record:", record);
   try {
     await mkdir(LOCAL_DB_DIR, { recursive: true });
     let history: SongHistoryRecord[] = [];
@@ -17,8 +16,8 @@ async function saveToLocalJSON(record: Omit<SongHistoryRecord, "id" | "createdAt
       const data = await readFile(LOCAL_DB_PATH, "utf-8");
       try {
         history = JSON.parse(data) as SongHistoryRecord[];
-      } catch (err) {
-        console.error("[DB LOCAL] Error parsing local JSON file, resetting:", err);
+      } catch {
+        // Corrupted file — start fresh rather than failing the save.
       }
     }
 
@@ -35,9 +34,8 @@ async function saveToLocalJSON(record: Omit<SongHistoryRecord, "id" | "createdAt
 
     history.unshift(newRecord);
     await writeFile(LOCAL_DB_PATH, JSON.stringify(history, null, 2), "utf-8");
-    console.log("[DB LOCAL] Successfully saved to JSON file. New record:", newRecord);
   } catch (error) {
-    console.error("[DB LOCAL] Failed to save to JSON file:", error);
+    console.error("[history] Failed to save to local JSON:", error);
     throw error;
   }
 }
@@ -54,7 +52,7 @@ async function getFromLocalJSON(deviceId: string): Promise<SongHistoryRecord[]> 
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 50);
   } catch (error) {
-    console.error("[DB LOCAL] Failed to read from JSON file:", error);
+    console.error("[history] Failed to read local JSON:", error);
     return [];
   }
 }
@@ -83,22 +81,18 @@ export async function initHistoryTable() {
 export async function saveSongToHistory(
   record: Omit<SongHistoryRecord, "id" | "createdAt">,
 ): Promise<void> {
-  console.log("[DB SAVE] saveSongToHistory function invoked with trackId:", record.trackId);
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    console.log("[DB SAVE] DATABASE_URL is missing. Falling back to local JSON storage.");
     return saveToLocalJSON(record);
   }
 
-  console.log("[DB SAVE] DATABASE_URL is present. Attempting Neon Postgres database write.");
   const sql = createNeonClient();
   await initHistoryTable();
-  const result = await sql`
+  await sql`
     INSERT INTO song_history (device_id, track_id, title, artist, cover_art_url, instrumental_url)
     VALUES (${record.deviceId}, ${record.trackId}, ${record.title}, ${record.artist}, ${record.coverArtUrl}, ${record.instrumentalUrl})
     RETURNING id
   `;
-  console.log("[DB SAVE] Neon Postgres write completed. Result:", result);
 }
 
 export async function getSongHistory(
@@ -106,7 +100,6 @@ export async function getSongHistory(
 ): Promise<SongHistoryRecord[]> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    console.log("[DB GET] DATABASE_URL is missing. Fetching from local JSON storage.");
     return getFromLocalJSON(deviceId);
   }
 

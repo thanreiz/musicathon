@@ -113,7 +113,7 @@ export async function separateVocals(
 
 function runDemucs(inputPath: string, outputDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const proc = execFile(
+    execFile(
       "python3",
       [DEMUCS_WRAPPER, inputPath, outputDir],
       {
@@ -131,17 +131,9 @@ function runDemucs(inputPath: string, outputDir: string): Promise<void> {
           );
           return;
         }
-        if (stderr) {
-          // Demucs prints progress to stderr — that's normal
-          console.log("[Demucs]:", stderr.slice(-200));
-        }
+        // Demucs prints progress to stderr on success — that's normal, ignore.
         resolve();
       },
     );
-
-    // Log the PID for debugging
-    if (proc.pid) {
-      console.log(`[Demucs] Started process PID=${proc.pid}`);
-    }
   });
 }

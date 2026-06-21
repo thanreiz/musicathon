@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
-  console.log("[API POST /api/history] Request received");
   try {
     const body = (await request.json()) as {
       deviceId?: string;
@@ -29,8 +28,6 @@ export async function POST(request: Request) {
       instrumentalUrl?: string;
     };
 
-    console.log("[API POST /api/history] Received body:", body);
-
     if (
       !body.deviceId ||
       !body.trackId ||
@@ -38,7 +35,6 @@ export async function POST(request: Request) {
       !body.artist ||
       !body.instrumentalUrl
     ) {
-      console.warn("[API POST /api/history] Validation failed: missing fields");
       return Response.json(
         { error: "Missing required fields." },
         { status: 400 },
@@ -54,11 +50,14 @@ export async function POST(request: Request) {
       instrumentalUrl: body.instrumentalUrl,
     });
 
-    console.log("[API POST /api/history] saveSongToHistory finished successfully");
     return Response.json({ success: true });
   } catch (err) {
-    console.error("[API POST /api/history] Error occurred:", err);
-    // Fail silently — don't break the user flow for history saving
-    return Response.json({ success: true });
+    // Report the failure honestly instead of masking it as success. The
+    // client treats this save as best-effort and won't block the user flow.
+    console.error("[history] Failed to save song:", err);
+    return Response.json(
+      { success: false, error: "Failed to save song to history." },
+      { status: 500 },
+    );
   }
 }

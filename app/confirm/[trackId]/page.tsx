@@ -23,13 +23,13 @@ type TrackResponse = {
 
 type UploadState =
   | { phase: "idle" }
-  | { phase: "uploading" }
   | { phase: "processing" }
   | { phase: "complete"; instrumentalUrl: string }
   | { phase: "error"; message: string };
 
-// Friendly rotating status messages shown during Demucs processing
+// Friendly rotating status messages shown during upload + Demucs processing
 const PROCESSING_MESSAGES = [
+  "Uploading your audio…",
   "Analyzing your audio…",
   "Removing vocals with AI…",
   "Isolating the instrumental track…",
@@ -102,14 +102,11 @@ export default function ConfirmTrackPage() {
 
   // ── File upload + Demucs separation (single request) ───────────────
   const handleFile = useCallback(async (file: File) => {
-    setUploadState({ phase: "uploading" });
+    setUploadState({ phase: "processing" });
 
     try {
       const body = new FormData();
       body.append("file", file);
-
-      // Brief uploading phase, then switch to processing
-      setUploadState({ phase: "processing" });
 
       const res = await fetch("/api/upload", { method: "POST", body });
       const data = (await res.json()) as {
@@ -118,7 +115,6 @@ export default function ConfirmTrackPage() {
       };
 
       if (!res.ok || !data.instrumentalUrl) {
-        console.error("[CONFIRM UPLOAD] Vocal separation failed on server:", data.error);
         setUploadState({
           phase: "error",
           message:
@@ -127,29 +123,23 @@ export default function ConfirmTrackPage() {
         return;
       }
 
-      console.log("[CONFIRM UPLOAD] Vocal separation succeeded. Instrumental URL:", data.instrumentalUrl);
-
       setUploadState({
         phase: "complete",
         instrumentalUrl: data.instrumentalUrl,
       });
 
-      // Auto-save to library when processing completes successfully
+      // Auto-save to library when processing completes successfully.
+      // Best-effort: failures here must not block the karaoke flow.
       if (track) {
-        console.log("[CONFIRM UPLOAD] Preparing to auto-save to library for track:", track.title);
         try {
           const KEY = "myusika_device_id";
           let deviceId = localStorage.getItem(KEY);
           if (!deviceId) {
             deviceId = crypto.randomUUID();
             localStorage.setItem(KEY, deviceId);
-            console.log("[CONFIRM UPLOAD] Created new deviceId in localStorage:", deviceId);
-          } else {
-            console.log("[CONFIRM UPLOAD] Found existing deviceId in localStorage:", deviceId);
           }
 
-          console.log("[CONFIRM UPLOAD] Dispatching POST /api/history...");
-          fetch("/api/history", {
+          void fetch("/api/history", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -160,19 +150,12 @@ export default function ConfirmTrackPage() {
               coverArtUrl: track.coverArtUrl,
               instrumentalUrl: data.instrumentalUrl,
             }),
-          })
-            .then((r) => r.json())
-            .then((res) => {
-              console.log("[CONFIRM UPLOAD] POST /api/history response received:", res);
-            })
-            .catch((err) => {
-              console.error("[CONFIRM UPLOAD] POST /api/history failed to execute:", err);
-            });
-        } catch (err) {
-          console.error("[CONFIRM UPLOAD] Failed to invoke save path locally:", err);
+          }).catch(() => {
+            // Saving history is best-effort; ignore network failures.
+          });
+        } catch {
+          // localStorage may be unavailable (e.g. private mode) — skip saving.
         }
-      } else {
-        console.warn("[CONFIRM UPLOAD] Track metadata was not loaded yet. Cannot save to history.");
       }
     } catch {
       setUploadState({
@@ -390,22 +373,6 @@ function AudioUploadZone({
     );
   }
 
-  // ── Uploading ──────────────────────────────────────────────────────
-  if (uploadState.phase === "uploading") {
-    return (
-      <div className="rounded-[2rem] border border-[#ffcf66]/15 bg-[#0c060d]/80 p-8 text-center">
-        <UploadSpinner />
-        <p className="mt-4 text-sm font-black uppercase tracking-[0.24em] text-[#ffb84d]">
-          Uploading your audio…
-        </p>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#ffe8c2]/60">
-          Sending your file to our audio processor. This should only take a few
-          seconds.
-        </p>
-      </div>
-    );
-  }
-
   // ── Processing ─────────────────────────────────────────────────────
   if (uploadState.phase === "processing") {
     return (
@@ -519,15 +486,6 @@ function ConfirmSkeleton() {
         <div className="h-40 rounded-[2rem] border border-dashed border-[#ffcf66]/20 bg-[#0c060d]/70" />
       </div>
     </section>
-  );
-}
-
-/** Pulsing spinner used during the upload phase. */
-function UploadSpinner() {
-  return (
-    <div className="mx-auto flex h-16 w-16 items-center justify-center">
-      <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#ffcf66]/20 border-t-[#ffb84d]" />
-    </div>
   );
 }
 
