@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { getSongHistory, saveSongToHistory } from "@/lib/api/history";
+import { getSongHistory, saveSongToHistory, clearSongHistory } from "@/lib/api/history";
 
 export async function GET(request: NextRequest) {
   const deviceId = request.nextUrl.searchParams.get("deviceId");
@@ -57,6 +57,28 @@ export async function POST(request: Request) {
     console.error("[history] Failed to save song:", err);
     return Response.json(
       { success: false, error: "Failed to save song to history." },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const deviceId = request.nextUrl.searchParams.get("deviceId");
+
+  if (!deviceId) {
+    return Response.json(
+      { error: "Missing deviceId." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    await clearSongHistory(deviceId);
+    return Response.json({ success: true });
+  } catch (err) {
+    console.error("[history] Failed to clear history:", err);
+    return Response.json(
+      { success: false, error: "Failed to clear history." },
       { status: 500 },
     );
   }

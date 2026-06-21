@@ -134,3 +134,24 @@ export async function getSongHistory(
   return rows as unknown as SongHistoryRecord[];
 }
 
+export async function clearSongHistory(deviceId: string): Promise<void> {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    try {
+      await mkdir(DATA_DIR, { recursive: true });
+      await writeFile(LOCAL_DB_PATH, JSON.stringify([], null, 2), "utf-8");
+      await writeFile(LEGACY_DB_PATH, JSON.stringify([], null, 2), "utf-8").catch(() => {});
+    } catch (error) {
+      console.error("[history] Failed to clear local JSON:", error);
+    }
+    return;
+  }
+
+  const sql = createNeonClient();
+  await initHistoryTable();
+  await sql`
+    DELETE FROM song_history
+    WHERE device_id = ${deviceId}
+  `;
+}
+

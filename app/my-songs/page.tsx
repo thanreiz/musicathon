@@ -72,6 +72,24 @@ export default function MySongsPage() {
     void load();
   }, []);
 
+  const handleClearHistory = async () => {
+    if (!confirm("Are you sure you want to clear your song history?")) {
+      return;
+    }
+    try {
+      const deviceId = getDeviceId();
+      localStorage.removeItem("myusika_local_history");
+      
+      await fetch(`/api/history?deviceId=${encodeURIComponent(deviceId)}`, {
+        method: "DELETE",
+      });
+
+      setHistory([]);
+    } catch (e) {
+      console.error("Failed to clear history:", e);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#120913] px-5 py-8 text-[#fff8eb] sm:px-8">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
@@ -111,13 +129,23 @@ export default function MySongsPage() {
           </div>
         </header>
 
-        <div>
-          <h1 className="text-4xl font-black text-[#ffcf66] sm:text-5xl">
-            My Songs
-          </h1>
-          <p className="mt-2 text-sm font-medium text-[#ffe8c2]/65">
-            Your recent karaoke sessions
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-black text-[#ffcf66] sm:text-5xl">
+              My Songs
+            </h1>
+            <p className="mt-2 text-sm font-medium text-[#ffe8c2]/65">
+              Your recent karaoke sessions
+            </p>
+          </div>
+          {history.length > 0 && (
+            <button
+              onClick={handleClearHistory}
+              className="rounded-full border border-red-500/35 px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-400 transition hover:border-red-500 hover:bg-red-500/10 active:scale-[0.97]"
+            >
+              Clear History
+            </button>
+          )}
         </div>
 
         {/* Featured (built-in) songs — always available, no upload needed */}
