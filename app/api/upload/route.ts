@@ -78,19 +78,6 @@ function hasAllowedExtension(filename: string): boolean {
 }
 
 export async function POST(request: Request) {
-  // Vocal separation runs Demucs as a local child process (python3 + ffmpeg),
-  // which isn't available on Vercel's serverless runtime. Degrade gracefully
-  // with a clear message instead of leaking a "spawn python3 ENOENT" error.
-  if (process.env.VERCEL) {
-    return Response.json(
-      {
-        error:
-          "Audio upload & vocal removal run in the local demo environment only " +
-          "(they need on-device AI processing). Please run Myusika locally to upload songs.",
-      },
-      { status: 503 },
-    );
-  }
 
   try {
     const formData = await request.formData();
@@ -141,9 +128,10 @@ export async function POST(request: Request) {
     }
 
     // ── Vocal separation ──────────────────────────────────────────────
-    // LALAL.AI is the PRIMARY path for the single env-gated demo track; any
-    // failure/timeout falls back to Demucs. All other tracks use Demucs
-    // directly. Demucs code is untouched and remains the safety net.
+    // On Vercel: LALAL.AI handles ALL tracks (Demucs can't run in serverless).
+    // Locally: LALAL.AI is the primary path for the env-gated demo track;
+    // any failure/timeout falls back to Demucs. All other local tracks use
+    // Demucs directly.
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 

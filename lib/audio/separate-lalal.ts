@@ -20,16 +20,24 @@ import { randomUUID } from "node:crypto";
 import type { SeparationResult } from "./separate";
 
 const LALAL_BASE = "https://www.lalal.ai/api/v1";
-const TEMP_DIR = path.join(process.cwd(), ".demucs-tmp");
-const PUBLIC_OUTPUT_DIR = path.join(process.cwd(), "public", "separated");
+const IS_VERCEL = Boolean(process.env.VERCEL);
+const TEMP_DIR = IS_VERCEL
+  ? path.join("/tmp", "lalal")
+  : path.join(process.cwd(), ".demucs-tmp");
+const PUBLIC_OUTPUT_DIR = IS_VERCEL
+  ? path.join("/tmp", "separated")
+  : path.join(process.cwd(), "public", "separated");
 
 const POLL_INTERVAL_MS = 4000;
 const POLL_TIMEOUT_MS = 4 * 60 * 1000;
 
 type LalalTrack = { type: "stem" | "back"; label?: string; url?: string };
 
-/** Whether LALAL should handle this track (single demo track, env-gated). */
+/** Whether LALAL should handle this track.
+ *  On Vercel: always true (Demucs can't run in serverless).
+ *  Locally: only for the single env-gated demo track. */
 export function shouldUseLalal(trackId: string | null): boolean {
+  if (IS_VERCEL) return true;
   const demo = process.env.LALAL_DEMO_TRACK_ID;
   return Boolean(trackId && demo && trackId === demo);
 }
@@ -149,9 +157,18 @@ export async function separateVocalsLalal(
       return { success: false, error: "LALAL returned no instrumental track." };
     }
 
-    const outputFilename = `${jobId}.mp3`;
-    const publicPath = path.join(PUBLIC_OUTPUT_DIR, outputFilename);
-    await downloadTo(instrumentalTrack.url, publicPath);
+    // On Vercel, public/ is read-only — return the LALAL CDN URL directly.
+    // Locally, download to public/separated/ so Next.js can serve it.
+    let instrumentalUrl: string;
+    if (IS_VERCEL) {
+      instrumentalUrl = instrumentalTrack.url;
+    } else {
+      const outputFilename = `${jobId}.mp3`;
+      const publicPath = path.join(PUBLIC_OUTPUT_DIR, outputFilename);
+      await mkdir(PUBLIC_OUTPUT_DIR, { recursive: true });
+      await downloadTo(instrumentalTrack.url, publicPath);
+      instrumentalUrl = `/separated/${outputFilename}`;
+    }
 
     let vocalsPath: string | null = null;
     if (vocalsTrack?.url) {
@@ -165,7 +182,7 @@ export async function separateVocalsLalal(
       }
     }
 
-    return { success: true, instrumentalUrl: `/separated/${outputFilename}`, vocalsPath };
+    return { success: true, instrumentalUrl, vocalsPath };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown LALAL error.";
     console.error("[LALAL] separation failed:", message);
