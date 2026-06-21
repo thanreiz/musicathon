@@ -94,14 +94,18 @@ export default function KaraokePlayer({
     }
   }, []);
 
-  // ── Binary search for current line (defensive check for empty words) ─
+  // ── Binary search for the current line ──────────────────────────────
+  // Returns the last line whose START time has been reached, so a line stays
+  // active (and lit) until the NEXT line actually begins — i.e. the just-sung
+  // line is "held" through any gap instead of disappearing the instant its
+  // last word ends. Returns -1 before the first line.
   const findCurrentLine = useCallback(
     (timeMs: number): number => {
       if (richsyncData.length === 0) return -1;
 
       let low = 0;
       let high = richsyncData.length - 1;
-      let result = richsyncData.length - 1; // Default to last line if past all
+      let result = -1;
 
       while (low <= high) {
         const mid = Math.floor((low + high) / 2);
@@ -110,13 +114,13 @@ export default function KaraokePlayer({
           low = mid + 1;
           continue;
         }
-        const lineEnd = line.words[line.words.length - 1].endTimeMs;
+        const lineStart = line.words[0].startTimeMs;
 
-        if (lineEnd >= timeMs) {
+        if (lineStart <= timeMs) {
           result = mid;
-          high = mid - 1;
-        } else {
           low = mid + 1;
+        } else {
+          high = mid - 1;
         }
       }
 
@@ -136,17 +140,17 @@ export default function KaraokePlayer({
         return firstLineStart >= INSTRUMENTAL_GAP_THRESHOLD_MS;
       }
 
-      // 2. Inter-line gaps check
+      // 2. Gap AFTER the current (held) line, before the next line starts.
       const lineIdx = findCurrentLine(timeMs);
-      if (lineIdx > 0 && lineIdx < richsyncData.length) {
-        const prevLine = richsyncData[lineIdx - 1];
+      if (lineIdx >= 0 && lineIdx < richsyncData.length - 1) {
         const currentLine = richsyncData[lineIdx];
-        
-        const prevEnd = prevLine.words[prevLine.words.length - 1]?.endTimeMs ?? 0;
-        const currentStart = currentLine.words[0]?.startTimeMs ?? 0;
-        
-        if (currentStart - prevEnd >= INSTRUMENTAL_GAP_THRESHOLD_MS) {
-          return timeMs > prevEnd && timeMs < currentStart;
+        const nextLine = richsyncData[lineIdx + 1];
+
+        const currentEnd = currentLine.words[currentLine.words.length - 1]?.endTimeMs ?? 0;
+        const nextStart = nextLine.words[0]?.startTimeMs ?? 0;
+
+        if (nextStart - currentEnd >= INSTRUMENTAL_GAP_THRESHOLD_MS) {
+          return timeMs > currentEnd && timeMs < nextStart;
         }
       }
 
@@ -176,10 +180,10 @@ export default function KaraokePlayer({
     const inBreak = checkInstrumentalBreak(adjustedTimeMs);
 
     // Find the word currently being sung: the last word in the active line
-    // whose start time has been reached. -1 means the line hasn't started yet
-    // (shown dim as a preview).
+    // whose start time has been reached. During a held line / instrumental
+    // break this lands on the last word, so the whole line stays lit (gold).
     let wordIdx = -1;
-    if (!inBreak && lineIdx >= 0 && lineIdx < richsyncData.length) {
+    if (lineIdx >= 0 && lineIdx < richsyncData.length) {
       const words = richsyncData[lineIdx].words;
       for (let i = words.length - 1; i >= 0; i--) {
         if (adjustedTimeMs >= words[i].startTimeMs) {
@@ -394,35 +398,40 @@ export default function KaraokePlayer({
           {playbackStatus === "during" && activeLine >= 0 && (
             <div className="w-full text-center space-y-8 animate-fade-in">
               
-              {/* CURRENT ACTIVE LINE — per-word highlight as each word is sung */}
-              <div className="min-h-[4rem] sm:min-h-[5rem] lg:min-h-[6rem] flex items-center justify-center px-4">
-                {isInstrumentalBreak ? (
-                  <p className="text-xl sm:text-2xl md:text-3xl font-black italic tracking-widest text-[#ffe8c2]/50 animate-pulse uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+              {/* INSTRUMENTAL BREAK BANNER — sits ABOVE the lyrics; the
+                  just-sung line stays visible (held) underneath. */}
+              {isInstrumentalBreak && (
+                <div className="flex justify-center">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-black/40 border border-[#ffcf66]/30 px-5 py-1.5 text-xs sm:text-sm font-black uppercase tracking-[0.25em] text-[#ffcf66] backdrop-blur-md animate-pulse">
                     ♪ Instrumental Break ♪
-                  </p>
-                ) : (
-                  <p
-                    data-line-idx={activeLine}
-                    className={`${lyricSizeClass} flex flex-wrap items-center justify-center gap-x-[0.3em] uppercase leading-tight tracking-wide`}
-                  >
-                    {richsyncData[activeLine].words.map((word, wordIdx) => {
-                      const state =
-                        wordIdx < activeWord
-                          ? "sung"
-                          : wordIdx === activeWord
-                            ? "active"
-                            : "upcoming";
-                      return (
-                        <span
-                          key={wordIdx}
-                          className={`lyric-word lyric-word-${state}`}
-                        >
-                          {word.text.trim()}
-                        </span>
-                      );
-                    })}
-                  </p>
-                )}
+                  </span>
+                </div>
+              )}
+
+              {/* CURRENT ACTIVE LINE — per-word highlight as each word is sung.
+                  Stays on screen (held) through gaps and instrumental breaks. */}
+              <div className="min-h-[4rem] sm:min-h-[5rem] lg:min-h-[6rem] flex items-center justify-center px-4">
+                <p
+                  data-line-idx={activeLine}
+                  className={`${lyricSizeClass} flex flex-wrap items-center justify-center gap-x-[0.3em] uppercase leading-tight tracking-wide`}
+                >
+                  {richsyncData[activeLine].words.map((word, wordIdx) => {
+                    const state =
+                      wordIdx < activeWord
+                        ? "sung"
+                        : wordIdx === activeWord
+                          ? "active"
+                          : "upcoming";
+                    return (
+                      <span
+                        key={wordIdx}
+                        className={`lyric-word lyric-word-${state}`}
+                      >
+                        {word.text.trim()}
+                      </span>
+                    );
+                  })}
+                </p>
               </div>
 
               {/* NEXT PREVIEW LINE (Smaller, Dimmer, Italicized) */}
