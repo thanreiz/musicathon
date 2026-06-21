@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { RichsyncLine } from "@/lib/types";
 
 type KaraokePlayerProps = {
@@ -15,17 +16,30 @@ type KaraokePlayerProps = {
   trackArtist: string;
 };
 
+const BACKGROUND_VIDEOS = [
+  "/videos/video1.mp4",
+  "/videos/video2.mp4",
+  "/videos/video3.mp4",
+];
+
+const VIDEO_NAMES = [
+  "City Skyline Sunset",
+  "Highway & Traffic Motion",
+  "Shopping Mall Bustle",
+];
+
 export default function KaraokePlayer({
   audioUrl,
   richsyncData,
   trackTitle,
   trackArtist,
 }: KaraokePlayerProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const isDev = searchParams.get("dev") === "true";
+
   const audioRef = useRef<HTMLAudioElement>(null);
-  const lyricsContainerRef = useRef<HTMLDivElement>(null);
-  const activeLineRef = useRef<HTMLDivElement>(null);
-  const progressBarRef = useRef<HTMLInputElement>(null);
-  const currentTimeTextRef = useRef<HTMLSpanElement>(null);
+  const progressIndicatorRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
@@ -36,6 +50,17 @@ export default function KaraokePlayer({
   const [activeWord, setActiveWord] = useState(-1);
   const [semitoneShift, setSemitoneShift] = useState(0);
   const [playbackStatus, setPlaybackStatus] = useState<"before" | "during" | "after">("before");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Pick background video index based on a hash of track metadata by default
+  const [videoIndex, setVideoIndex] = useState<number>(() => {
+    let hash = 0;
+    const str = trackTitle + trackArtist;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return Math.abs(hash) % BACKGROUND_VIDEOS.length;
+  });
 
   // Sync offset in milliseconds: positive means lyrics appear earlier, negative means later
   const [syncOffsetMs, setSyncOffsetMs] = useState<number>(() => {
@@ -81,7 +106,7 @@ export default function KaraokePlayer({
       if (result >= 0) {
         const lastWord = richsyncData[result].words[richsyncData[result].words.length - 1];
         if (lastWord && timeMs > lastWord.endTimeMs) {
-          // Check if there's a next line coming soon (within 2s gap)
+          // Check if there's a next line coming soon
           if (result + 1 < richsyncData.length) {
             const nextLineStart = richsyncData[result + 1].words[0]?.startTimeMs ?? 0;
             if (timeMs < nextLineStart) {
@@ -120,12 +145,10 @@ export default function KaraokePlayer({
     const timeSec = audio.currentTime;
     const timeMs = timeSec * 1000;
 
-    // Update DOM directly for smooth progress/time display (avoiding 60fps React state updates)
-    if (progressBarRef.current) {
-      progressBarRef.current.value = String(timeSec);
-    }
-    if (currentTimeTextRef.current) {
-      currentTimeTextRef.current.textContent = formatTime(timeSec);
+    // Update non-interactive progress bar directly in the DOM
+    if (progressIndicatorRef.current && duration > 0) {
+      const pct = (timeSec / duration) * 100;
+      progressIndicatorRef.current.style.width = `${pct}%`;
     }
 
     // Apply sync offset
@@ -134,8 +157,26 @@ export default function KaraokePlayer({
     const lineIdx = findCurrentLine(adjustedTimeMs);
     const wordIdx = findCurrentWord(lineIdx, adjustedTimeMs);
 
+    // Update states only when they change to eliminate React rendering lag
     setActiveLine((prev) => (prev !== lineIdx ? lineIdx : prev));
     setActiveWord((prev) => (prev !== wordIdx ? wordIdx : prev));
+
+    // Handle smooth visual sweep/fill progress for the active word directly in DOM
+    const activeWordEl = document.getElementById("active-word-el");
+    if (activeWordEl && lineIdx >= 0 && wordIdx >= 0) {
+      const activeWordData = richsyncData[lineIdx]?.words[wordIdx];
+      if (activeWordData) {
+        const wordStart = activeWordData.startTimeMs;
+        const wordEnd = activeWordData.endTimeMs;
+        const wordDuration = wordEnd - wordStart;
+        if (wordDuration > 0) {
+          const progress = Math.max(0, Math.min(1, (adjustedTimeMs - wordStart) / wordDuration));
+          activeWordEl.style.setProperty("--progress", `${progress * 100}%`);
+        } else {
+          activeWordEl.style.setProperty("--progress", "100%");
+        }
+      }
+    }
 
     // Update playback status
     const firstLineStart = richsyncData[0]?.words[0]?.startTimeMs ?? 0;
@@ -152,7 +193,7 @@ export default function KaraokePlayer({
     setPlaybackStatus((prev) => (prev !== status ? status : prev));
 
     animationRef.current = requestAnimationFrame(tick);
-  }, [findCurrentLine, findCurrentWord, richsyncData, syncOffsetMs, formatTime]);
+  }, [findCurrentLine, findCurrentWord, richsyncData, syncOffsetMs, duration]);
 
   // ── Start/stop animation loop when playing ─────────────────────────
   useEffect(() => {
@@ -164,22 +205,11 @@ export default function KaraokePlayer({
     return () => cancelAnimationFrame(animationRef.current);
   }, [isPlaying, tick]);
 
-  // ── Auto-scroll to active line ─────────────────────────────────────
-  useEffect(() => {
-    if (activeLineRef.current) {
-      activeLineRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }
-  }, [activeLine]);
-
   // ── Web Audio API for pitch shifting ───────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Initialize AudioContext on first interaction (lazy)
     if (!audioContextRef.current) {
       const ctx = new AudioContext();
       const source = ctx.createMediaElementSource(audio);
@@ -188,7 +218,6 @@ export default function KaraokePlayer({
       sourceNodeRef.current = source;
     }
 
-    // preservesPitch = false means playbackRate changes both pitch AND tempo
     audio.preservesPitch = false;
     audio.playbackRate = Math.pow(2, semitoneShift / 12);
   }, [semitoneShift]);
@@ -198,7 +227,6 @@ export default function KaraokePlayer({
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Resume AudioContext if suspended (browser autoplay policy)
     if (audioContextRef.current?.state === "suspended") {
       await audioContextRef.current.resume();
     }
@@ -217,11 +245,8 @@ export default function KaraokePlayer({
     if (!audio) return;
     audio.currentTime = 0;
 
-    if (progressBarRef.current) {
-      progressBarRef.current.value = "0";
-    }
-    if (currentTimeTextRef.current) {
-      currentTimeTextRef.current.textContent = "0:00";
+    if (progressIndicatorRef.current) {
+      progressIndicatorRef.current.style.width = "0%";
     }
 
     setActiveLine(-1);
@@ -229,91 +254,130 @@ export default function KaraokePlayer({
     setPlaybackStatus("before");
   }, []);
 
-  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const newTime = Number(e.target.value);
-    audio.currentTime = newTime;
-
-    if (currentTimeTextRef.current) {
-      currentTimeTextRef.current.textContent = formatTime(newTime);
-    }
-  }, [formatTime]);
-
   return (
-    <div className="flex flex-col gap-5">
-      {/* Track info */}
-      <div className="text-center">
-        <h2 className="text-lg font-black uppercase tracking-[0.2em] text-[#ffcf66]">
-          {trackTitle}
-        </h2>
-        <p className="mt-1 text-sm font-semibold text-[#ffe8c2]/70">
-          {trackArtist}
-        </p>
+    <div className="relative h-screen w-screen overflow-hidden font-sans text-white select-none">
+      {/* CSS Stylesheet Injector for smooth text gradient clipping */}
+      <style>{`
+        .karaoke-word {
+          display: inline-block;
+          font-weight: 900;
+          color: rgba(255, 255, 255, 0.4);
+          -webkit-text-fill-color: rgba(255, 255, 255, 0.4);
+          transition: -webkit-text-fill-color 0.15s ease, color 0.15s ease;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+        }
+        .karaoke-word-sung {
+          color: #ffcf66;
+          -webkit-text-fill-color: #ffcf66;
+          text-shadow: 0 0 16px rgba(255, 207, 102, 0.9), 0 2px 4px rgba(0, 0, 0, 0.9);
+        }
+        .karaoke-word-active {
+          background-image: linear-gradient(to right, #ffcf66 var(--progress, 0%), rgba(255, 255, 255, 0.4) var(--progress, 0%));
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          filter: drop-shadow(0 0 10px rgba(255, 207, 102, 0.8));
+          text-shadow: none;
+        }
+      `}</style>
+
+      {/* ── Background Video Backdrop ─────────────────────────────────── */}
+      <div className="absolute inset-0 -z-20 h-full w-full overflow-hidden bg-[#0c060d]">
+        <video
+          key={BACKGROUND_VIDEOS[videoIndex]}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="h-full w-full object-cover scale-[1.02]"
+        >
+          <source src={BACKGROUND_VIDEOS[videoIndex]} type="video/mp4" />
+        </video>
       </div>
 
-      {/* Lyrics area */}
-      <div
-        ref={lyricsContainerRef}
-        className="relative mx-auto w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-[#ffcf66]/12 bg-[#0c060d]/80 p-6 sm:p-8"
-        style={{ maxHeight: "55vh" }}
+      {/* ── Dark Gradient Legibility Overlay ───────────────────────────── */}
+      <div className="absolute inset-0 -z-10 h-full w-full bg-gradient-to-b from-black/50 via-black/30 to-black/85" />
+
+      {/* ── Top-Right Hamburger Button ──────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={() => setIsDrawerOpen(true)}
+        className="absolute top-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-black/40 border border-white/10 text-white backdrop-blur-md transition hover:bg-black/60 hover:border-[#ffcf66]/50 shadow-lg"
+        title="Open Settings Menu"
       >
-        {/* Pre-first-lyric indicator */}
-        {isPlaying && playbackStatus === "before" && (
-          <div className="mb-6 text-center">
-            <span className="animate-pulse text-lg font-bold text-[#ffb84d]">
-              Get ready…
-            </span>
-          </div>
-        )}
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
 
-        {/* Post-last-lyric indicator */}
-        {playbackStatus === "after" && (
-          <div className="mb-6 text-center">
-            <span className="text-lg font-bold text-emerald-400">
-              🎉 Great job!
-            </span>
-          </div>
-        )}
+      {/* ── Main Viewport Content (Bottom-Third Anchored Lyrics) ─────────── */}
+      <div className="relative flex h-full w-full flex-col justify-end p-8 sm:p-12 pb-16">
+        <div className="mx-auto mb-12 flex w-full max-w-5xl flex-col items-center justify-end pb-8">
+          
+          {/* State 1: Before Song Starts */}
+          {playbackStatus === "before" && (
+            <div className="mb-10 text-center animate-fade-in">
+              <span className="text-xs font-black uppercase tracking-[0.3em] text-[#ffcf66] drop-shadow-md">
+                Get Ready to Sing
+              </span>
+              <h1 className="mt-3 text-4xl font-black uppercase tracking-wider text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] sm:text-5xl lg:text-6xl">
+                {trackTitle}
+              </h1>
+              <p className="mt-2 text-lg font-bold text-[#ffe8c2]/80 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                {trackArtist}
+              </p>
+              {isPlaying && (
+                <div className="mt-6 flex justify-center">
+                  <span className="inline-block animate-pulse rounded-full bg-[#ffb84d]/20 px-6 py-2 text-sm font-bold uppercase tracking-wider text-[#ffcf66] border border-[#ffcf66]/30">
+                    Intro Playing…
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* Lyrics lines */}
-        <div className="space-y-4">
-          {richsyncData.map((line, lineIdx) => {
-            const isActive = lineIdx === activeLine;
-            const isPast = lineIdx < activeLine;
-
-            return (
-              <div
-                key={lineIdx}
-                ref={isActive ? activeLineRef : undefined}
-                className={`transition-all duration-300 ${
-                  isActive
-                    ? "scale-[1.02]"
-                    : isPast
-                      ? "opacity-40"
-                      : playbackStatus === "before"
-                        ? "opacity-30"
-                        : "opacity-50"
-                }`}
+          {/* State 2: Great Job (Finished) */}
+          {playbackStatus === "after" && (
+            <div className="mb-10 text-center animate-bounce-slow">
+              <span className="text-5xl sm:text-6xl lg:text-7xl font-black text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.6)]">
+                🎉 GREAT JOB!
+              </span>
+              <p className="mt-3 text-lg font-bold text-[#ffe8c2]/80 drop-shadow-md">
+                You just sang "{trackTitle}"
+              </p>
+              <button
+                type="button"
+                onClick={restart}
+                className="mt-6 rounded-full bg-[#ffb84d] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-[#1a0b10] shadow-lg transition hover:bg-[#ffd166]"
               >
-                <p className="text-2xl font-bold leading-relaxed sm:text-3xl">
-                  {line.words.map((word, wordIdx) => {
-                    let color: string;
+                Sing Again
+              </button>
+            </div>
+          )}
 
-                    if (!isActive) {
-                      color = isPast ? "text-[#ffe8c2]/60" : "text-[#fff8eb]/80";
-                    } else if (wordIdx < activeWord) {
-                      color = "text-[#ffe8c2]/70";
+          {/* ── Active Lyrics Area ────────────────────────────────────────── */}
+          {playbackStatus === "during" && activeLine >= 0 && (
+            <div className="w-full text-center space-y-8">
+              
+              {/* CURRENT ACTIVE LINE (Large & Bold with Sweep-Fill) */}
+              <div className="min-h-[4rem] sm:min-h-[5rem] lg:min-h-[6rem] flex items-center justify-center">
+                <p className="text-3xl font-black leading-tight tracking-wide uppercase sm:text-4xl md:text-5xl lg:text-6xl">
+                  {richsyncData[activeLine].words.map((word, wordIdx) => {
+                    let wordClass = "karaoke-word";
+                    let isWordActive = false;
+
+                    if (wordIdx < activeWord) {
+                      wordClass = "karaoke-word-sung";
                     } else if (wordIdx === activeWord) {
-                      color = "text-[#ffcf66] drop-shadow-[0_0_12px_rgba(255,207,102,0.5)]";
-                    } else {
-                      color = "text-[#fff8eb]/80";
+                      wordClass = "karaoke-word-active";
+                      isWordActive = true;
                     }
 
                     return (
                       <span
                         key={wordIdx}
-                        className={`inline transition-colors duration-75 ${color}`}
+                        id={isWordActive ? "active-word-el" : undefined}
+                        className={`${wordClass} mr-3 sm:mr-4`}
                       >
                         {word.text}
                       </span>
@@ -321,151 +385,279 @@ export default function KaraokePlayer({
                   })}
                 </p>
               </div>
-            );
-          })}
+
+              {/* NEXT PREVIEW LINE (Smaller, Dimmer, Italicized) */}
+              <div className="min-h-[2rem] sm:min-h-[3rem] flex items-center justify-center opacity-60">
+                {activeLine + 1 < richsyncData.length ? (
+                  <p className="text-lg font-bold italic tracking-wide text-[#ffe8c2]/60 sm:text-xl md:text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                    {richsyncData[activeLine + 1].text}
+                  </p>
+                ) : (
+                  <p className="text-sm font-bold tracking-widest text-[#ffcf66]/30 uppercase">
+                    Instrumental Outro
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Fallback Preview when playbackStatus is "before" */}
+          {playbackStatus === "before" && richsyncData.length > 0 && (
+            <div className="mt-8 opacity-40 text-center">
+              <p className="text-xs font-black uppercase tracking-widest text-[#ffcf66]/40 mb-2">
+                Up Next
+              </p>
+              <p className="text-lg font-bold italic text-[#ffe8c2]/65 drop-shadow-md">
+                {richsyncData[0].text}
+              </p>
+            </div>
+          )}
+
         </div>
       </div>
 
-      {/* Controls bar */}
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 rounded-[2rem] border border-[#ffcf66]/12 bg-[#0c060d]/80 p-4 sm:p-5">
-        {/* Seek bar */}
-        <div className="flex items-center gap-3">
-          <span
-            ref={currentTimeTextRef}
-            className="min-w-[3rem] text-right text-xs font-bold text-[#ffe8c2]/60"
-          >
-            0:00
-          </span>
-          <input
-            ref={progressBarRef}
-            type="range"
-            min={0}
-            max={duration || 1}
-            step={0.1}
-            defaultValue={0}
-            onChange={handleSeek}
-            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-[#ffcf66]/15 accent-[#ffb84d] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#ffb84d]"
+      {/* ── Play/Pause Trigger (Bottom-Right Corner) ──────────────────── */}
+      <button
+        type="button"
+        onClick={togglePlayback}
+        className="absolute bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-black/40 border border-white/10 text-white backdrop-blur-md shadow-2xl transition hover:bg-black/60 hover:border-[#ffcf66]/50 active:scale-95"
+        title={isPlaying ? "Pause" : "Play"}
+      >
+        {isPlaying ? (
+          <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+            <rect x="6" y="4" width="4" height="16" rx="1" />
+            <rect x="14" y="4" width="4" height="16" rx="1" />
+          </svg>
+        ) : (
+          <svg className="h-6 w-6 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        )}
+      </button>
+
+      {/* ── Subtle elapsed progress bar (Non-Interactive) ───────────────── */}
+      <div className="absolute bottom-0 left-0 h-1.5 w-full bg-white/10">
+        <div
+          ref={progressIndicatorRef}
+          className="h-full bg-[#ffb84d] shadow-[0_0_8px_#ffb84d] transition-all duration-100"
+          style={{ width: "0%" }}
+        />
+      </div>
+
+      {/* ── Settings Drawer (Part 4) ──────────────────────────────────── */}
+      {isDrawerOpen && (
+        <>
+          {/* Overlay Backdrop */}
+          <div
+            onClick={() => setIsDrawerOpen(false)}
+            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
           />
-          <span className="min-w-[3rem] text-xs font-bold text-[#ffe8c2]/60">
-            {formatTime(duration)}
-          </span>
-        </div>
 
-        {/* Buttons row */}
-        <div className="flex items-center justify-center gap-4 flex-wrap sm:flex-nowrap">
-          {/* Restart */}
-          <button
-            type="button"
-            onClick={restart}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#ffcf66]/25 text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
-            title="Restart"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
+          {/* Drawer Sidebar */}
+          <div className="fixed top-0 right-0 z-50 h-full w-80 max-w-[85vw] bg-[#0c060d]/95 border-l border-[#ffcf66]/20 p-6 flex flex-col justify-between shadow-2xl overflow-y-auto">
+            <div className="flex flex-col gap-6">
+              
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <h3 className="text-lg font-black uppercase tracking-wider text-[#ffcf66]">
+                  Karaoke Deck
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="text-white/60 hover:text-white transition"
+                  title="Close Menu"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
 
-          {/* Play/Pause */}
-          <button
-            type="button"
-            onClick={togglePlayback}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-[#ffb84d] text-[#1a0b10] shadow-[0_14px_40px_rgba(255,184,77,0.28)] transition hover:bg-[#ffd166]"
-            title={isPlaying ? "Pause" : "Play"}
-          >
-            {isPlaying ? (
-              <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="4" width="4" height="16" rx="1" />
-                <rect x="14" y="4" width="4" height="16" rx="1" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </button>
+              {/* Controls: Pitch Transposition */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#ffe8c2]/50">
+                  Transpose (Key Shift)
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSemitoneShift((s) => Math.max(s - 1, -6))}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white transition hover:bg-white/15"
+                  >
+                    ▼
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSemitoneShift(0)}
+                    className="flex-1 h-10 rounded-xl bg-white/5 border border-white/10 text-sm font-bold text-white transition hover:bg-white/15"
+                  >
+                    {semitoneShift > 0 ? `+${semitoneShift}` : semitoneShift === 0 ? "Normal" : semitoneShift}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSemitoneShift((s) => Math.min(s + 1, 6))}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white transition hover:bg-white/15"
+                  >
+                    ▲
+                  </button>
+                </div>
+              </div>
 
-          {/* Pitch controls */}
-          <div className="flex items-center gap-1.5 border-l border-[#ffcf66]/15 pl-4">
-            <button
-              type="button"
-              onClick={() => setSemitoneShift((s) => Math.max(s - 1, -6))}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#ffcf66]/25 text-xs font-bold text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
-              title="Pitch down"
-            >
-              ▼
-            </button>
-            <button
-              type="button"
-              onClick={() => setSemitoneShift(0)}
-              className={`flex h-8 min-w-[2.5rem] items-center justify-center rounded-full px-2 text-xs font-bold transition ${
-                semitoneShift === 0
-                  ? "bg-[#ffcf66]/10 text-[#ffcf66]"
-                  : "border border-[#ffcf66]/25 text-[#ffefcf] hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
-              }`}
-              title="Reset pitch"
-            >
-              {semitoneShift > 0 ? `+${semitoneShift}` : semitoneShift === 0 ? "0" : String(semitoneShift)}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSemitoneShift((s) => Math.min(s + 1, 6))}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#ffcf66]/25 text-xs font-bold text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
-              title="Pitch up"
-            >
-              ▲
-            </button>
-            <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide text-[#ffe8c2]/40">
-              Key
-            </span>
+              {/* Controls: Lyric Sync Offset */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#ffe8c2]/50">
+                  Lyric Timing Calibration
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newOffset = Math.max(syncOffsetMs - 100, -2000);
+                      setSyncOffsetMs(newOffset);
+                      localStorage.setItem("karaoke_sync_offset", String(newOffset));
+                    }}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white transition hover:bg-white/15"
+                    title="Make lyrics appear later"
+                  >
+                    -0.1s
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSyncOffsetMs(0);
+                      localStorage.setItem("karaoke_sync_offset", "0");
+                    }}
+                    className="flex-1 h-10 rounded-xl bg-white/5 border border-white/10 text-sm font-bold text-white transition hover:bg-white/15"
+                  >
+                    {syncOffsetMs >= 0 ? `+${(syncOffsetMs / 1000).toFixed(1)}s` : `${(syncOffsetMs / 1000).toFixed(1)}s`}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newOffset = Math.min(syncOffsetMs + 100, 2000);
+                      setSyncOffsetMs(newOffset);
+                      localStorage.setItem("karaoke_sync_offset", String(newOffset));
+                    }}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white transition hover:bg-white/15"
+                    title="Make lyrics appear earlier"
+                  >
+                    +0.1s
+                  </button>
+                </div>
+              </div>
+
+              {/* Controls: Background Video */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#ffe8c2]/50">
+                  Select Video Backdrop
+                </span>
+                <div className="flex flex-col gap-1.5">
+                  {BACKGROUND_VIDEOS.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setVideoIndex(idx)}
+                      className={`w-full h-10 rounded-xl border text-xs font-bold text-left px-4 transition ${
+                        videoIndex === idx
+                          ? "bg-[#ffcf66]/10 border-[#ffcf66] text-[#ffcf66]"
+                          : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10"
+                      }`}
+                    >
+                      {VIDEO_NAMES[idx] || `Looping Backdrop ${idx + 1}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Navigation Options */}
+            <div className="flex flex-col gap-2 border-t border-white/10 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDrawerOpen(false);
+                  router.push("/search");
+                }}
+                className="w-full h-11 rounded-xl bg-[#ffb84d] text-sm font-black uppercase tracking-wider text-[#1a0b10] flex items-center justify-center transition hover:bg-[#ffd166]"
+              >
+                Back to Search
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDrawerOpen(false);
+                  router.push("/my-songs");
+                }}
+                className="w-full h-11 rounded-xl bg-white/5 border border-white/15 text-sm font-bold text-white flex items-center justify-center transition hover:bg-white/10"
+              >
+                My Songs library
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDrawerOpen(false);
+                  router.push("/");
+                }}
+                className="w-full h-11 rounded-xl bg-white/5 border border-white/15 text-sm font-bold text-white flex items-center justify-center transition hover:bg-white/10"
+              >
+                Home page
+              </button>
+            </div>
+
           </div>
+        </>
+      )}
 
-          {/* Sync offset controls */}
-          <div className="flex items-center gap-1.5 border-l border-[#ffcf66]/15 pl-4">
+      {/* ── Dev-only Fast-Forward Panel (Part 7) ───────────────────────── */}
+      {isDev && (
+        <div className="fixed bottom-24 left-6 z-50 flex flex-col gap-2 rounded-2xl border-2 border-red-500 bg-black/90 p-4 shadow-2xl w-60">
+          <div className="text-xs font-black uppercase tracking-wider text-red-500 flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+            Dev Testing Console
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-1">
             <button
               type="button"
               onClick={() => {
-                const newOffset = Math.max(syncOffsetMs - 100, -2000);
-                setSyncOffsetMs(newOffset);
-                localStorage.setItem("karaoke_sync_offset", String(newOffset));
+                const audio = audioRef.current;
+                if (audio) audio.currentTime += 30;
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#ffcf66]/25 text-xs font-bold text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
-              title="Lyrics later (delay highlight)"
+              className="rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 transition"
             >
-              -
+              +30 Seconds
             </button>
             <button
               type="button"
               onClick={() => {
-                setSyncOffsetMs(0);
-                localStorage.setItem("karaoke_sync_offset", "0");
+                const audio = audioRef.current;
+                const firstLineStart = richsyncData[0]?.words[0]?.startTimeMs ?? 0;
+                if (audio) {
+                  audio.currentTime = Math.max(0, (firstLineStart - 3000) / 1000);
+                }
               }}
-              className={`flex h-8 min-w-[3.5rem] items-center justify-center rounded-full px-2 text-xs font-bold transition ${
-                syncOffsetMs === 0
-                  ? "bg-[#ffcf66]/10 text-[#ffcf66]"
-                  : "border border-[#ffcf66]/25 text-[#ffefcf] hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
-              }`}
-              title="Reset lyrics sync"
+              className="rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 transition"
             >
-              {syncOffsetMs >= 0 ? `+${(syncOffsetMs / 1000).toFixed(1)}s` : `${(syncOffsetMs / 1000).toFixed(1)}s`}
+              Skip to Lyrics
             </button>
             <button
               type="button"
               onClick={() => {
-                const newOffset = Math.min(syncOffsetMs + 100, 2000);
-                setSyncOffsetMs(newOffset);
-                localStorage.setItem("karaoke_sync_offset", String(newOffset));
+                const audio = audioRef.current;
+                const lastLine = richsyncData[richsyncData.length - 1];
+                const lastLineEnd = lastLine?.words[lastLine.words.length - 1]?.endTimeMs ?? 0;
+                if (audio) {
+                  audio.currentTime = Math.max(0, (lastLineEnd - 5000) / 1000);
+                }
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-[#ffcf66]/25 text-xs font-bold text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10"
-              title="Lyrics earlier (advance highlight)"
+              className="col-span-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2 transition"
             >
-              +
+              Skip to End (Last 5s)
             </button>
-            <span className="ml-1 text-[10px] font-semibold uppercase tracking-wide text-[#ffe8c2]/40">
-              Sync
-            </span>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Hidden audio element */}
       <audio
