@@ -1,4 +1,5 @@
 import { separateVocals } from "@/lib/audio/separate";
+import { separateVocalsLalal, shouldUseLalal } from "@/lib/audio/separate-lalal";
 import { getRichsync } from "@/lib/api/musixmatch";
 import { alignLyrics, type AlignSegment } from "@/lib/audio/align";
 import { writeAlignedLyrics } from "@/lib/audio/aligned-store";
@@ -139,10 +140,28 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── Run Demucs locally for vocal separation ───────────────────────
+    // ── Vocal separation ──────────────────────────────────────────────
+    // LALAL.AI is the PRIMARY path for the single env-gated demo track; any
+    // failure/timeout falls back to Demucs. All other tracks use Demucs
+    // directly. Demucs code is untouched and remains the safety net.
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const result = await separateVocals(buffer, file.name);
+
+    let result = null as Awaited<ReturnType<typeof separateVocals>> | null;
+    if (shouldUseLalal(trackId)) {
+      console.log(`[/api/upload] Trying LALAL.AI for demo track ${trackId}`);
+      const lalal = await separateVocalsLalal(buffer, file.name);
+      if (lalal.success) {
+        result = lalal;
+      } else {
+        console.warn(
+          `[/api/upload] LALAL failed (${lalal.error}); falling back to Demucs.`,
+        );
+      }
+    }
+    if (!result) {
+      result = await separateVocals(buffer, file.name);
+    }
 
     if (!result.success) {
       // Log the raw cause server-side; show the user a clean, generic message
