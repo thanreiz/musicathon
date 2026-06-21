@@ -1,5 +1,42 @@
-// import { uploadAndSplit } from "@/lib/api/lalal";  // DISABLED — replaced by local Demucs
 import { separateVocals } from "@/lib/audio/separate";
+import { getRichsync } from "@/lib/api/musixmatch";
+import { alignLyrics, type AlignSegment } from "@/lib/audio/align";
+import { writeAlignedLyrics } from "@/lib/audio/aligned-store";
+
+/**
+ * Best-effort forced alignment for songs WITHOUT studio richsync. Uses the
+ * separated vocal stem + the known LRC lyric lines to produce word-level
+ * timing, stored for the richsync route to serve. Never throws into the upload
+ * flow — any failure just leaves the LRC estimate in place.
+ */
+async function maybeAlignLyrics(
+  trackId: string | null,
+  vocalsPath: string | null,
+): Promise<void> {
+  if (!trackId || !vocalsPath) return;
+  try {
+    const mxm = await getRichsync(trackId);
+    // Studio richsync already exists, or no lyrics at all → nothing to align.
+    if (!mxm.available || mxm.syncSource === "richsync") return;
+
+    const segments: AlignSegment[] = mxm.lines
+      .filter((line) => line.words.length > 0)
+      .map((line) => ({
+        text: line.text,
+        startMs: line.words[0].startTimeMs,
+        endMs: line.words[line.words.length - 1].endTimeMs,
+      }));
+    if (segments.length === 0) return;
+
+    const aligned = await alignLyrics(vocalsPath, segments);
+    if (aligned) {
+      await writeAlignedLyrics(trackId, aligned);
+      console.log(`[/api/upload] Stored WhisperX alignment for track ${trackId}`);
+    }
+  } catch (error) {
+    console.error("[/api/upload] Alignment skipped:", error);
+  }
+}
 
 /**
  * Maximum file size: 20 MB.
@@ -57,6 +94,7 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file");
+    const trackId = (formData.get("trackId") as string | null) ?? null;
 
     // ── Validate presence ─────────────────────────────────────────────
     if (!file || !(file instanceof File)) {
@@ -118,6 +156,10 @@ export async function POST(request: Request) {
         { status: 502 },
       );
     }
+
+    // Best-effort: force-align lyrics for non-richsync songs before responding,
+    // so the karaoke page sees the improved "auto" timing on first load.
+    await maybeAlignLyrics(trackId, result.vocalsPath);
 
     // Return the instrumental URL directly — no polling needed
     return Response.json({

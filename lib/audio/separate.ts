@@ -21,7 +21,7 @@ const TEMP_DIR = path.join(process.cwd(), ".demucs-tmp");
 const PUBLIC_OUTPUT_DIR = path.join(process.cwd(), "public", "separated");
 
 export type SeparationResult =
-  | { success: true; instrumentalUrl: string }
+  | { success: true; instrumentalUrl: string; vocalsPath: string | null }
   | { success: false; error: string };
 
 /**
@@ -80,9 +80,13 @@ export async function separateVocals(
       const outputFilename = `${jobId}.mp3`;
       const publicPath = path.join(PUBLIC_OUTPUT_DIR, outputFilename);
       await copyFile(altPath, publicPath);
+      // The vocals stem (--two-stems=vocals) sits next to no_vocals.mp3; kept
+      // in temp for optional forced alignment.
+      const altVocals = path.join(outputDir, "htdemucs", jobId, "vocals.mp3");
       return {
         success: true,
         instrumentalUrl: `/separated/${outputFilename}`,
+        vocalsPath: existsSync(altVocals) ? altVocals : null,
       };
     }
 
@@ -91,9 +95,11 @@ export async function separateVocals(
     const publicPath = path.join(PUBLIC_OUTPUT_DIR, outputFilename);
     await copyFile(noVocalsPath, publicPath);
 
+    const vocalsPath = path.join(outputDir, "htdemucs", trackName, "vocals.mp3");
     return {
       success: true,
       instrumentalUrl: `/separated/${outputFilename}`,
+      vocalsPath: existsSync(vocalsPath) ? vocalsPath : null,
     };
   } catch (error) {
     const message =

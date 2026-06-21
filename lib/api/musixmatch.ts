@@ -324,7 +324,7 @@ function parseLrcSubtitle(lrc: string): RichsyncLine[] {
  * distributing [startMs, endMs] proportionally to word length. Used for LRC
  * lyrics, which only provide line-level timestamps.
  */
-function distributeWordTimings(
+export function distributeWordTimings(
   text: string,
   startMs: number,
   endMs: number,

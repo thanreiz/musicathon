@@ -107,6 +107,7 @@ export default function ConfirmTrackPage() {
     try {
       const body = new FormData();
       body.append("file", file);
+      body.append("trackId", trackId);
 
       const res = await fetch("/api/upload", { method: "POST", body });
       const data = (await res.json()) as {

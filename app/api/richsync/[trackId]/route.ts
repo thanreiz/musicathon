@@ -1,4 +1,5 @@
 import { getRichsync } from "@/lib/api/musixmatch";
+import { readAlignedLyrics } from "@/lib/audio/aligned-store";
 
 type RichsyncRouteContext = {
   params: Promise<{
@@ -18,6 +19,19 @@ export async function GET(_request: Request, context: RichsyncRouteContext) {
 
   try {
     const richsync = await getRichsync(trackId);
+
+    // Priority: studio-grade richsync > WhisperX forced alignment > LRC spread.
+    // Only look for an aligned result when there's no studio richsync, and
+    // never degrade the richsync path.
+    if (!(richsync.available && richsync.syncSource === "richsync")) {
+      const aligned = await readAlignedLyrics(trackId);
+      if (aligned) {
+        return Response.json(
+          { available: true, lines: aligned, syncSource: "auto" },
+          { headers: { "Cache-Control": "no-store" } },
+        );
+      }
+    }
 
     return Response.json(richsync, {
       headers: {
