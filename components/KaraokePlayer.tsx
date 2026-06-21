@@ -410,26 +410,6 @@ export default function KaraokePlayer({
         </div>
       )}
 
-      {/* ── Top-Left Badges (z-index 30) ─────────────────────────────────── */}
-      <div className="absolute top-6 left-6 z-30 flex flex-col items-start gap-2">
-        <div className="flex items-center gap-2 rounded-full bg-black/40 border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-gold backdrop-blur-md shadow-lg">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          Instrumental Mode (AI Vocals Removed)
-        </div>
-        {/* Sync-source indicator — never present auto timing as studio-grade. */}
-        {syncSource === "richsync" ? (
-          <div className="flex items-center gap-2 rounded-full bg-black/40 border border-emerald-400/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300 backdrop-blur-md shadow-lg">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Studio-grade sync
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 rounded-full bg-black/40 border border-amber-400/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-300/90 backdrop-blur-md shadow-lg">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-            Auto-synced (approximate)
-          </div>
-        )}
-      </div>
-
       {/* ── Top-Right Hamburger Button (z-index 30) ─────────────────────── */}
       <button
         type="button"
