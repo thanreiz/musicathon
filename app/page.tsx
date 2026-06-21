@@ -23,12 +23,12 @@ export default function Home() {
           >
             Search a song
           </Link>
-          <a
-            href="#"
+          <Link
+            href="/my-songs"
             className="inline-flex h-12 items-center justify-center rounded-full border border-[#ffcf66]/35 px-7 text-sm font-bold uppercase tracking-wide text-[#ffefcf] transition hover:border-[#ffcf66] hover:bg-[#ffcf66]/10 focus:outline-none focus:ring-2 focus:ring-[#ffcf66] focus:ring-offset-2 focus:ring-offset-[#120913]"
           >
             My Songs
-          </a>
+          </Link>
         </div>
       </section>
     </main>
