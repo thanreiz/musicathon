@@ -204,7 +204,7 @@ export async function getRichsync(trackId: string): Promise<RichsyncData> {
     if (body?.richsync?.richsync_body) {
       const lines = parseRichsyncBody(body.richsync.richsync_body);
       if (lines.length > 0) {
-        return { available: true, lines };
+        return { available: true, lines, syncSource: "richsync" };
       }
     }
   } catch {
@@ -221,7 +221,8 @@ export async function getRichsync(trackId: string): Promise<RichsyncData> {
     if (body?.subtitle?.subtitle_body) {
       const lines = parseLrcSubtitle(body.subtitle.subtitle_body);
       if (lines.length > 0) {
-        return { available: true, lines };
+        // Line-level LRC spread across words — estimated, not studio-grade.
+        return { available: true, lines, syncSource: "auto" };
       }
     }
   } catch {

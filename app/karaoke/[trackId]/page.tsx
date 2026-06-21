@@ -172,6 +172,7 @@ export default function KaraokePage() {
       <KaraokePlayer
         audioUrl={instrumentalUrl}
         richsyncData={lines}
+        syncSource={richsync.syncSource}
         trackTitle={track?.title ?? "Unknown track"}
         trackArtist={track?.artist ?? "Unknown artist"}
       />

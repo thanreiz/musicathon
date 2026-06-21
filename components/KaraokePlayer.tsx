@@ -7,11 +7,12 @@ import {
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { RichsyncLine } from "@/lib/types";
+import type { RichsyncLine, SyncSource } from "@/lib/types";
 
 type KaraokePlayerProps = {
   audioUrl: string;
   richsyncData: RichsyncLine[];
+  syncSource: SyncSource;
   trackTitle: string;
   trackArtist: string;
 };
@@ -60,6 +61,7 @@ function isHeldNote(startTimeMs: number, endTimeMs: number, text: string): boole
 export default function KaraokePlayer({
   audioUrl,
   richsyncData,
+  syncSource,
   trackTitle,
   trackArtist,
 }: KaraokePlayerProps) {
@@ -395,10 +397,24 @@ export default function KaraokePlayer({
       {/* ── Dark Gradient Legibility Overlay (z-index 10) ────────────────── */}
       <div className="absolute inset-0 z-10 h-full w-full bg-gradient-to-b from-black/50 via-black/30 to-black/85" />
 
-      {/* ── Top-Left Instrumental Badge (z-index 30 - Audio Source Indicator stays untouched) ── */}
-      <div className="absolute top-6 left-6 z-30 flex items-center gap-2 rounded-full bg-black/40 border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-[#ffcf66] backdrop-blur-md shadow-lg">
-        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-        Instrumental Mode (AI Vocals Removed)
+      {/* ── Top-Left Badges (z-index 30) ─────────────────────────────────── */}
+      <div className="absolute top-6 left-6 z-30 flex flex-col items-start gap-2">
+        <div className="flex items-center gap-2 rounded-full bg-black/40 border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-[#ffcf66] backdrop-blur-md shadow-lg">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          Instrumental Mode (AI Vocals Removed)
+        </div>
+        {/* Sync-source indicator — never present auto timing as studio-grade. */}
+        {syncSource === "richsync" ? (
+          <div className="flex items-center gap-2 rounded-full bg-black/40 border border-emerald-400/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300 backdrop-blur-md shadow-lg">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            Studio-grade sync
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-full bg-black/40 border border-amber-400/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-300/90 backdrop-blur-md shadow-lg">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+            Auto-synced (approximate)
+          </div>
+        )}
       </div>
 
       {/* ── Top-Right Hamburger Button (z-index 30) ─────────────────────── */}
