@@ -68,16 +68,18 @@ export default function KaraokePlayer({
     return Math.abs(hash) % BACKGROUND_VIDEOS.length;
   });
 
-  // Sync offset in milliseconds: positive means lyrics appear earlier, negative means later
+  // Sync offset in milliseconds: positive means lyrics appear earlier, negative
+  // means later. Default 0 so a line lights up exactly when it is being sung
+  // (matching the lyric timestamps). Users can still nudge it via the menu.
   const [syncOffsetMs, setSyncOffsetMs] = useState<number>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("karaoke_sync_offset");
+      const saved = localStorage.getItem("karaoke_sync_offset_v2");
       if (saved !== null) {
         const parsed = parseInt(saved, 10);
         if (!isNaN(parsed)) return parsed;
       }
     }
-    return 300; // Default 300ms advance offset for optimal singing alignment
+    return 0;
   });
 
   // Load saved settings from localStorage on mount
@@ -525,7 +527,7 @@ export default function KaraokePlayer({
                     onClick={() => {
                       const newOffset = Math.max(syncOffsetMs - 100, -2000);
                       setSyncOffsetMs(newOffset);
-                      localStorage.setItem("karaoke_sync_offset", String(newOffset));
+                      localStorage.setItem("karaoke_sync_offset_v2", String(newOffset));
                     }}
                     className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white transition hover:bg-white/15"
                     title="Make lyrics appear later"
@@ -536,7 +538,7 @@ export default function KaraokePlayer({
                     type="button"
                     onClick={() => {
                       setSyncOffsetMs(0);
-                      localStorage.setItem("karaoke_sync_offset", "0");
+                      localStorage.setItem("karaoke_sync_offset_v2", "0");
                     }}
                     className="flex-1 h-10 rounded-xl bg-white/5 border border-white/10 text-sm font-bold text-white transition hover:bg-white/15"
                   >
@@ -547,7 +549,7 @@ export default function KaraokePlayer({
                     onClick={() => {
                       const newOffset = Math.min(syncOffsetMs + 100, 2000);
                       setSyncOffsetMs(newOffset);
-                      localStorage.setItem("karaoke_sync_offset", String(newOffset));
+                      localStorage.setItem("karaoke_sync_offset_v2", String(newOffset));
                     }}
                     className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white transition hover:bg-white/15"
                     title="Make lyrics appear earlier"
