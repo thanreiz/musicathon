@@ -168,7 +168,7 @@ export default function KaraokePage() {
   const lines: RichsyncLine[] = richsync.lines;
 
   return (
-    <main className="min-h-screen bg-[#120913] text-[#fff8eb] overflow-hidden relative w-full h-screen">
+    <main className="min-h-screen text-[#fff8eb] overflow-hidden relative w-full h-screen">
       <KaraokePlayer
         audioUrl={instrumentalUrl}
         richsyncData={lines}

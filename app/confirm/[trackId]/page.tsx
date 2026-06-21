@@ -118,6 +118,7 @@ export default function ConfirmTrackPage() {
       };
 
       if (!res.ok || !data.instrumentalUrl) {
+        console.error("[CONFIRM UPLOAD] Vocal separation failed on server:", data.error);
         setUploadState({
           phase: "error",
           message:
@@ -126,6 +127,8 @@ export default function ConfirmTrackPage() {
         return;
       }
 
+      console.log("[CONFIRM UPLOAD] Vocal separation succeeded. Instrumental URL:", data.instrumentalUrl);
+
       setUploadState({
         phase: "complete",
         instrumentalUrl: data.instrumentalUrl,
@@ -133,15 +136,20 @@ export default function ConfirmTrackPage() {
 
       // Auto-save to library when processing completes successfully
       if (track) {
+        console.log("[CONFIRM UPLOAD] Preparing to auto-save to library for track:", track.title);
         try {
           const KEY = "myusika_device_id";
           let deviceId = localStorage.getItem(KEY);
           if (!deviceId) {
             deviceId = crypto.randomUUID();
             localStorage.setItem(KEY, deviceId);
+            console.log("[CONFIRM UPLOAD] Created new deviceId in localStorage:", deviceId);
+          } else {
+            console.log("[CONFIRM UPLOAD] Found existing deviceId in localStorage:", deviceId);
           }
 
-          void fetch("/api/history", {
+          console.log("[CONFIRM UPLOAD] Dispatching POST /api/history...");
+          fetch("/api/history", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -152,10 +160,19 @@ export default function ConfirmTrackPage() {
               coverArtUrl: track.coverArtUrl,
               instrumentalUrl: data.instrumentalUrl,
             }),
-          });
-        } catch {
-          // Saving history is best-effort
+          })
+            .then((r) => r.json())
+            .then((res) => {
+              console.log("[CONFIRM UPLOAD] POST /api/history response received:", res);
+            })
+            .catch((err) => {
+              console.error("[CONFIRM UPLOAD] POST /api/history failed to execute:", err);
+            });
+        } catch (err) {
+          console.error("[CONFIRM UPLOAD] Failed to invoke save path locally:", err);
         }
+      } else {
+        console.warn("[CONFIRM UPLOAD] Track metadata was not loaded yet. Cannot save to history.");
       }
     } catch {
       setUploadState({

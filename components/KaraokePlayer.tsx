@@ -51,6 +51,9 @@ export default function KaraokePlayer({
   const [semitoneShift, setSemitoneShift] = useState(0);
   const [playbackStatus, setPlaybackStatus] = useState<"before" | "during" | "after">("before");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  
+  // Persisted lyric font size setting
+  const [lyricSize, setLyricSize] = useState<"small" | "medium" | "large">("medium");
 
   // Pick background video index based on a hash of track metadata by default
   const [videoIndex, setVideoIndex] = useState<number>(() => {
@@ -74,6 +77,16 @@ export default function KaraokePlayer({
     return 300; // Default 300ms advance offset for optimal singing alignment
   });
 
+  // Load saved settings from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedSize = localStorage.getItem("karaoke_lyric_size") as "small" | "medium" | "large" | null;
+      if (savedSize && ["small", "medium", "large"].includes(savedSize)) {
+        setLyricSize(savedSize);
+      }
+    }
+  }, []);
+
   // ── Format time ────────────────────────────────────────────────────
   const formatTime = useCallback((seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -81,7 +94,7 @@ export default function KaraokePlayer({
     return `${m}:${s.toString().padStart(2, "0")}`;
   }, []);
 
-  // ── Binary search for current line ──────────────────────────────────
+  // ── Binary search for current line (defensive check for empty words) ─
   const findCurrentLine = useCallback(
     (timeMs: number): number => {
       if (richsyncData.length === 0) return -1;
@@ -92,7 +105,12 @@ export default function KaraokePlayer({
 
       while (low <= high) {
         const mid = Math.floor((low + high) / 2);
-        const lineStart = richsyncData[mid].words[0]?.startTimeMs ?? 0;
+        const line = richsyncData[mid];
+        if (!line || !line.words || line.words.length === 0) {
+          low = mid + 1;
+          continue;
+        }
+        const lineStart = line.words[0].startTimeMs;
 
         if (lineStart <= timeMs) {
           result = mid;
@@ -104,13 +122,19 @@ export default function KaraokePlayer({
 
       // Check if we're past the end of the found line
       if (result >= 0) {
-        const lastWord = richsyncData[result].words[richsyncData[result].words.length - 1];
-        if (lastWord && timeMs > lastWord.endTimeMs) {
-          // Check if there's a next line coming soon
-          if (result + 1 < richsyncData.length) {
-            const nextLineStart = richsyncData[result + 1].words[0]?.startTimeMs ?? 0;
-            if (timeMs < nextLineStart) {
-              return result; // Stay on current line in gaps
+        const line = richsyncData[result];
+        if (line && line.words && line.words.length > 0) {
+          const lastWord = line.words[line.words.length - 1];
+          if (lastWord && timeMs > lastWord.endTimeMs) {
+            // Check if there's a next line coming soon
+            if (result + 1 < richsyncData.length) {
+              const nextLine = richsyncData[result + 1];
+              if (nextLine && nextLine.words && nextLine.words.length > 0) {
+                const nextLineStart = nextLine.words[0].startTimeMs;
+                if (timeMs < nextLineStart) {
+                  return result; // Stay on current line in gaps
+                }
+              }
             }
           }
         }
@@ -126,7 +150,9 @@ export default function KaraokePlayer({
     (lineIndex: number, timeMs: number): number => {
       if (lineIndex < 0 || lineIndex >= richsyncData.length) return -1;
 
-      const words = richsyncData[lineIndex].words;
+      const words = richsyncData[lineIndex]?.words;
+      if (!words || words.length === 0) return -1;
+
       for (let i = words.length - 1; i >= 0; i--) {
         if (timeMs >= words[i].startTimeMs) {
           return i;
@@ -161,19 +187,23 @@ export default function KaraokePlayer({
     setActiveLine((prev) => (prev !== lineIdx ? lineIdx : prev));
     setActiveWord((prev) => (prev !== wordIdx ? wordIdx : prev));
 
-    // Handle smooth visual sweep/fill progress for the active word directly in DOM
-    const activeWordEl = document.getElementById("active-word-el");
-    if (activeWordEl && lineIdx >= 0 && wordIdx >= 0) {
-      const activeWordData = richsyncData[lineIdx]?.words[wordIdx];
-      if (activeWordData) {
-        const wordStart = activeWordData.startTimeMs;
-        const wordEnd = activeWordData.endTimeMs;
-        const wordDuration = wordEnd - wordStart;
-        if (wordDuration > 0) {
-          const progress = Math.max(0, Math.min(1, (adjustedTimeMs - wordStart) / wordDuration));
-          activeWordEl.style.setProperty("--progress", `${progress * 100}%`);
-        } else {
-          activeWordEl.style.setProperty("--progress", "100%");
+    // Handle smooth visual sweep/fill progress directly on the rendered active word element in DOM
+    const activeWordEl = document.querySelector(".karaoke-word-active") as HTMLElement;
+    if (activeWordEl) {
+      const elLineIdx = parseInt(activeWordEl.getAttribute("data-line-idx") || "-1", 10);
+      const elWordIdx = parseInt(activeWordEl.getAttribute("data-word-idx") || "-1", 10);
+      if (elLineIdx >= 0 && elWordIdx >= 0) {
+        const activeWordData = richsyncData[elLineIdx]?.words[elWordIdx];
+        if (activeWordData) {
+          const wordStart = activeWordData.startTimeMs;
+          const wordEnd = activeWordData.endTimeMs;
+          const wordDuration = wordEnd - wordStart;
+          if (wordDuration > 0) {
+            const progress = Math.max(0, Math.min(1, (adjustedTimeMs - wordStart) / wordDuration));
+            activeWordEl.style.setProperty("--progress", `${progress * 100}%`);
+          } else {
+            activeWordEl.style.setProperty("--progress", "100%");
+          }
         }
       }
     }
@@ -254,8 +284,16 @@ export default function KaraokePlayer({
     setPlaybackStatus("before");
   }, []);
 
+  // Lyric sizes configuration classes map
+  const lyricSizeClass = 
+    lyricSize === "small" 
+      ? "text-2xl sm:text-3xl md:text-4xl lg:text-5xl" 
+      : lyricSize === "large" 
+        ? "text-4xl sm:text-5xl md:text-6xl lg:text-7xl" 
+        : "text-3xl sm:text-4xl md:text-5xl lg:text-6xl"; // medium
+
   return (
-    <div className="relative h-screen w-screen overflow-hidden font-sans text-white select-none">
+    <div className="relative h-screen w-screen overflow-hidden font-sans text-white select-none bg-[#0c060d]">
       {/* CSS Stylesheet Injector for smooth text gradient clipping */}
       <style>{`
         .karaoke-word {
@@ -278,11 +316,12 @@ export default function KaraokePlayer({
           -webkit-text-fill-color: transparent;
           filter: drop-shadow(0 0 10px rgba(255, 207, 102, 0.8));
           text-shadow: none;
+          transition: none !important; /* Prevent transition conflicts during sweep */
         }
       `}</style>
 
-      {/* ── Background Video Backdrop ─────────────────────────────────── */}
-      <div className="absolute inset-0 -z-20 h-full w-full overflow-hidden bg-[#0c060d]">
+      {/* ── Background Video Backdrop (z-index 0) ────────────────────── */}
+      <div className="absolute inset-0 z-0 h-full w-full overflow-hidden bg-[#0c060d]">
         <video
           key={BACKGROUND_VIDEOS[videoIndex]}
           autoPlay
@@ -295,10 +334,16 @@ export default function KaraokePlayer({
         </video>
       </div>
 
-      {/* ── Dark Gradient Legibility Overlay ───────────────────────────── */}
-      <div className="absolute inset-0 -z-10 h-full w-full bg-gradient-to-b from-black/50 via-black/30 to-black/85" />
+      {/* ── Dark Gradient Legibility Overlay (z-index 10) ────────────────── */}
+      <div className="absolute inset-0 z-10 h-full w-full bg-gradient-to-b from-black/50 via-black/30 to-black/85" />
 
-      {/* ── Top-Right Hamburger Button ──────────────────────────────────── */}
+      {/* ── Top-Left Instrumental Badge (z-index 30) ─────────────────────── */}
+      <div className="absolute top-6 left-6 z-30 flex items-center gap-2 rounded-full bg-black/40 border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-[#ffcf66] backdrop-blur-md shadow-lg">
+        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+        Instrumental Mode (AI Vocals Removed)
+      </div>
+
+      {/* ── Top-Right Hamburger Button (z-index 30) ─────────────────────── */}
       <button
         type="button"
         onClick={() => setIsDrawerOpen(true)}
@@ -310,8 +355,8 @@ export default function KaraokePlayer({
         </svg>
       </button>
 
-      {/* ── Main Viewport Content (Bottom-Third Anchored Lyrics) ─────────── */}
-      <div className="relative flex h-full w-full flex-col justify-end p-8 sm:p-12 pb-16">
+      {/* ── Main Viewport Content (z-index 20) ─────────────────────────── */}
+      <div className="relative z-20 flex h-full w-full flex-col justify-end p-8 sm:p-12 pb-16">
         <div className="mx-auto mb-12 flex w-full max-w-5xl flex-col items-center justify-end pb-8">
           
           {/* State 1: Before Song Starts */}
@@ -359,9 +404,9 @@ export default function KaraokePlayer({
           {playbackStatus === "during" && activeLine >= 0 && (
             <div className="w-full text-center space-y-8">
               
-              {/* CURRENT ACTIVE LINE (Large & Bold with Sweep-Fill) */}
+              {/* CURRENT ACTIVE LINE (Large & Bold with Sweep-Fill and Dynamic Text Size) */}
               <div className="min-h-[4rem] sm:min-h-[5rem] lg:min-h-[6rem] flex items-center justify-center">
-                <p className="text-3xl font-black leading-tight tracking-wide uppercase sm:text-4xl md:text-5xl lg:text-6xl">
+                <p className={`${lyricSizeClass} font-black leading-tight tracking-wide uppercase`}>
                   {richsyncData[activeLine].words.map((word, wordIdx) => {
                     let wordClass = "karaoke-word";
                     let isWordActive = false;
@@ -376,6 +421,8 @@ export default function KaraokePlayer({
                     return (
                       <span
                         key={wordIdx}
+                        data-line-idx={activeLine}
+                        data-word-idx={wordIdx}
                         id={isWordActive ? "active-word-el" : undefined}
                         className={`${wordClass} mr-3 sm:mr-4`}
                       >
@@ -416,7 +463,7 @@ export default function KaraokePlayer({
         </div>
       </div>
 
-      {/* ── Play/Pause Trigger (Bottom-Right Corner) ──────────────────── */}
+      {/* ── Play/Pause Trigger (Bottom-Right Corner - z-index 30) ──────── */}
       <button
         type="button"
         onClick={togglePlayback}
@@ -435,8 +482,8 @@ export default function KaraokePlayer({
         )}
       </button>
 
-      {/* ── Subtle elapsed progress bar (Non-Interactive) ───────────────── */}
-      <div className="absolute bottom-0 left-0 h-1.5 w-full bg-white/10">
+      {/* ── Subtle elapsed progress bar (Non-Interactive - z-index 30) ────── */}
+      <div className="absolute bottom-0 left-0 z-30 h-1.5 w-full bg-white/10">
         <div
           ref={progressIndicatorRef}
           className="h-full bg-[#ffb84d] shadow-[0_0_8px_#ffb84d] transition-all duration-100"
@@ -444,7 +491,7 @@ export default function KaraokePlayer({
         />
       </div>
 
-      {/* ── Settings Drawer (Part 4) ──────────────────────────────────── */}
+      {/* ── Settings Drawer (z-index 50) ───────────────────────────────── */}
       {isDrawerOpen && (
         <>
           {/* Overlay Backdrop */}
@@ -547,6 +594,32 @@ export default function KaraokePlayer({
                 </div>
               </div>
 
+              {/* Controls: Lyric Text Size Settings */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#ffe8c2]/50">
+                  Lyric Text Size
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {(["small", "medium", "large"] as const).map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => {
+                        setLyricSize(size);
+                        localStorage.setItem("karaoke_lyric_size", size);
+                      }}
+                      className={`flex-1 h-10 rounded-xl border text-xs font-bold uppercase transition ${
+                        lyricSize === size
+                          ? "bg-[#ffcf66]/10 border-[#ffcf66] text-[#ffcf66]"
+                          : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Controls: Background Video */}
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#ffe8c2]/50">
@@ -610,7 +683,7 @@ export default function KaraokePlayer({
         </>
       )}
 
-      {/* ── Dev-only Fast-Forward Panel (Part 7) ───────────────────────── */}
+      {/* ── Dev-only Fast-Forward Panel (z-index 50) ───────────────────── */}
       {isDev && (
         <div className="fixed bottom-24 left-6 z-50 flex flex-col gap-2 rounded-2xl border-2 border-red-500 bg-black/90 p-4 shadow-2xl w-60">
           <div className="text-xs font-black uppercase tracking-wider text-red-500 flex items-center gap-1.5">
