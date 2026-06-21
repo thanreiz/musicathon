@@ -12,6 +12,17 @@ type SearchResponse = {
   results?: TrackMetadata[];
 };
 
+const SUGGESTED_SONGS = [
+  { title: "Buwan", artist: "Juan Karlos", query: "Buwan Juan Karlos" },
+  { title: "Dilaw", artist: "Maki", query: "Dilaw Maki" },
+  { title: "Cruel Summer", artist: "Taylor Swift", query: "Cruel Summer Taylor Swift" },
+  { title: "Bohemian Rhapsody", artist: "Queen", query: "Bohemian Rhapsody Queen" },
+  { title: "Dancing Queen", artist: "ABBA", query: "Dancing Queen ABBA" },
+  { title: "Ang Huling El Bimbo", artist: "Eraserheads", query: "Ang Huling El Bimbo Eraserheads" },
+  { title: "Fly Me to the Moon", artist: "Frank Sinatra", query: "Fly Me to the Moon Frank Sinatra" },
+  { title: "Perfect", artist: "Ed Sheeran", query: "Perfect Ed Sheeran" },
+];
+
 export default function SearchPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -189,10 +200,44 @@ export default function SearchPage() {
           ) : null}
 
           {!showLoading && !visibleError && trimmedQuery.length === 0 ? (
-            <StateMessage
-              title="What are we singing?"
-              message="Start typing a song title or artist. Results will appear here as you search."
-            />
+            <div className="space-y-6">
+              <div className="flex flex-col gap-1.5 border-l-4 border-[#ffcf66] pl-4">
+                <h2 className="text-xl font-black tracking-wider text-[#ffcf66] uppercase">
+                  Browse the Songbook
+                </h2>
+                <p className="text-sm font-semibold text-[#ffe8c2]/55">
+                  Choose a favorite to load its lyrics and album cover instantly:
+                </p>
+              </div>
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+                {SUGGESTED_SONGS.map((song, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setQuery(song.query);
+                      setDebouncedQuery(song.query);
+                    }}
+                    className="flex flex-col gap-3 rounded-2xl border border-[#ffcf66]/12 bg-[#1f0d13]/85 p-4 text-left transition hover:-translate-y-0.5 hover:border-[#ffb84d]/45 hover:bg-[#281018] active:translate-y-0 shadow-[0_12px_36px_rgba(0,0,0,0.15)] group"
+                  >
+                    {/* Mic Icon */}
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#ffb84d]/10 text-[#ffcf66] transition group-hover:bg-[#ffb84d]/20">
+                      <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-black text-[#fff8eb] group-hover:text-[#ffcf66]">
+                        {song.title}
+                      </h3>
+                      <p className="truncate text-xs font-semibold text-[#ffe8c2]/60 mt-0.5">
+                        {song.artist}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : null}
         </section>
       </div>
