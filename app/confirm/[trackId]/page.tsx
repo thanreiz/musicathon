@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { TrackMetadata } from "@/lib/types";
+import type { TrackMetadata, SongHistoryRecord } from "@/lib/types";
 
 type TrackResponse = {
   error?: string;
@@ -138,6 +138,27 @@ export default function ConfirmTrackPage() {
           if (!deviceId) {
             deviceId = crypto.randomUUID();
             localStorage.setItem(KEY, deviceId);
+          }
+
+          // Save to localStorage as a robust local fallback
+          try {
+            const stored = localStorage.getItem("myusika_local_history");
+            const localHistory: SongHistoryRecord[] = stored ? JSON.parse(stored) : [];
+            const newRecord: SongHistoryRecord = {
+              id: crypto.randomUUID(),
+              deviceId,
+              trackId,
+              title: track.title,
+              artist: track.artist,
+              coverArtUrl: track.coverArtUrl,
+              instrumentalUrl: data.instrumentalUrl,
+              createdAt: new Date().toISOString(),
+            };
+            const deduped = localHistory.filter((item) => item.trackId !== trackId);
+            deduped.unshift(newRecord);
+            localStorage.setItem("myusika_local_history", JSON.stringify(deduped.slice(0, 50)));
+          } catch (e) {
+            console.error("Failed to write local history fallback:", e);
           }
 
           void fetch("/api/history", {

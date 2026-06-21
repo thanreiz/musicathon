@@ -8,11 +8,15 @@ import { randomUUID } from "node:crypto";
 // Persistent, stable location for local (no-database) song history. Lives in a
 // dedicated data/ dir — NOT in the throwaway .demucs-tmp temp folder — so the
 // library survives dev-server restarts. Gitignored (it is per-user data).
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = process.env.VERCEL
+  ? path.join("/tmp", "data")
+  : path.join(process.cwd(), "data");
 const LOCAL_DB_PATH = path.join(DATA_DIR, "song_history.json");
 // Legacy location used before storage was made stable; read once so existing
 // records are migrated automatically and never lost.
-const LEGACY_DB_PATH = path.join(process.cwd(), ".demucs-tmp", "local_history.json");
+const LEGACY_DB_PATH = process.env.VERCEL
+  ? path.join("/tmp", "local_history.json")
+  : path.join(process.cwd(), ".demucs-tmp", "local_history.json");
 
 async function readLocalHistory(): Promise<SongHistoryRecord[]> {
   for (const candidate of [LOCAL_DB_PATH, LEGACY_DB_PATH]) {

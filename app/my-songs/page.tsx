@@ -30,9 +30,41 @@ export default function MySongsPage() {
         const deviceId = getDeviceId();
         const res = await fetch(`/api/history?deviceId=${encodeURIComponent(deviceId)}`);
         const data = (await res.json()) as { history?: SongHistoryRecord[] };
-        setHistory(data.history ?? []);
+        const apiHistory = data.history ?? [];
+
+        // Load local history backup
+        let localHistory: SongHistoryRecord[] = [];
+        try {
+          const stored = localStorage.getItem("myusika_local_history");
+          if (stored) {
+            localHistory = JSON.parse(stored) as SongHistoryRecord[];
+          }
+        } catch (e) {
+          console.error("Failed to load local history:", e);
+        }
+
+        // Merge both, sorting by createdAt descending, and deduping by trackId
+        const mergedMap = new Map<string, SongHistoryRecord>();
+        localHistory.forEach((item) => mergedMap.set(item.trackId, item));
+        apiHistory.forEach((item) => mergedMap.set(item.trackId, item));
+
+        const mergedList = Array.from(mergedMap.values()).sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+
+        setHistory(mergedList);
       } catch {
-        setHistory([]);
+        // Fallback to purely localStorage if API fails
+        try {
+          const stored = localStorage.getItem("myusika_local_history");
+          if (stored) {
+            setHistory(JSON.parse(stored) as SongHistoryRecord[]);
+          } else {
+            setHistory([]);
+          }
+        } catch {
+          setHistory([]);
+        }
       } finally {
         setIsLoading(false);
       }

@@ -10,7 +10,9 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import type { RichsyncLine } from "@/lib/types";
 
-const ALIGNED_DIR = path.join(process.cwd(), "data", "aligned");
+const ALIGNED_DIR = process.env.VERCEL
+  ? path.join("/tmp", "data", "aligned")
+  : path.join(process.cwd(), "data", "aligned");
 
 function filePathFor(trackId: string): string {
   // Sanitize so the trackId can't escape the directory.
