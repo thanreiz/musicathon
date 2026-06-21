@@ -45,3 +45,6 @@ next-env.d.ts
 # demucs
 .demucs-tmp/
 public/separated/
+
+# local song-history store (per-user data)
+/data/

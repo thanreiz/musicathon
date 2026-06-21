@@ -1,25 +1,36 @@
 import { createNeonClient } from "@/lib/db";
 import type { SongHistoryRecord } from "@/lib/types";
 import { existsSync } from "node:fs";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
-const LOCAL_DB_DIR = path.join(process.cwd(), ".demucs-tmp");
-const LOCAL_DB_PATH = path.join(LOCAL_DB_DIR, "local_history.json");
+// Persistent, stable location for local (no-database) song history. Lives in a
+// dedicated data/ dir — NOT in the throwaway .demucs-tmp temp folder — so the
+// library survives dev-server restarts. Gitignored (it is per-user data).
+const DATA_DIR = path.join(process.cwd(), "data");
+const LOCAL_DB_PATH = path.join(DATA_DIR, "song_history.json");
+// Legacy location used before storage was made stable; read once so existing
+// records are migrated automatically and never lost.
+const LEGACY_DB_PATH = path.join(process.cwd(), ".demucs-tmp", "local_history.json");
+
+async function readLocalHistory(): Promise<SongHistoryRecord[]> {
+  for (const candidate of [LOCAL_DB_PATH, LEGACY_DB_PATH]) {
+    if (!existsSync(candidate)) continue;
+    try {
+      const parsed = JSON.parse(await readFile(candidate, "utf-8"));
+      if (Array.isArray(parsed)) return parsed as SongHistoryRecord[];
+    } catch {
+      // Corrupted/unreadable — fall through to the next candidate.
+    }
+  }
+  return [];
+}
 
 async function saveToLocalJSON(record: Omit<SongHistoryRecord, "id" | "createdAt">): Promise<void> {
   try {
-    await mkdir(LOCAL_DB_DIR, { recursive: true });
-    let history: SongHistoryRecord[] = [];
-    if (existsSync(LOCAL_DB_PATH)) {
-      const data = await readFile(LOCAL_DB_PATH, "utf-8");
-      try {
-        history = JSON.parse(data) as SongHistoryRecord[];
-      } catch {
-        // Corrupted file — start fresh rather than failing the save.
-      }
-    }
+    await mkdir(DATA_DIR, { recursive: true });
+    const history = await readLocalHistory();
 
     const newRecord: SongHistoryRecord = {
       id: randomUUID(),
@@ -32,29 +43,31 @@ async function saveToLocalJSON(record: Omit<SongHistoryRecord, "id" | "createdAt
       createdAt: new Date().toISOString(),
     };
 
-    history.unshift(newRecord);
-    await writeFile(LOCAL_DB_PATH, JSON.stringify(history, null, 2), "utf-8");
+    // Replace any prior record for the same track so re-uploading updates the
+    // entry instead of piling up duplicates.
+    const deduped = history.filter((item) => item.trackId !== record.trackId);
+    deduped.unshift(newRecord);
+
+    // Atomic write: write to a temp file then rename, so a crash mid-write
+    // can't corrupt or truncate the library.
+    const tmpPath = `${LOCAL_DB_PATH}.${randomUUID()}.tmp`;
+    await writeFile(tmpPath, JSON.stringify(deduped, null, 2), "utf-8");
+    await rename(tmpPath, LOCAL_DB_PATH);
   } catch (error) {
     console.error("[history] Failed to save to local JSON:", error);
     throw error;
   }
 }
 
-async function getFromLocalJSON(deviceId: string): Promise<SongHistoryRecord[]> {
-  if (!existsSync(LOCAL_DB_PATH)) {
-    return [];
-  }
-  try {
-    const data = await readFile(LOCAL_DB_PATH, "utf-8");
-    const history = JSON.parse(data) as SongHistoryRecord[];
-    return history
-      .filter((item) => item.deviceId === deviceId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 50);
-  } catch (error) {
-    console.error("[history] Failed to read local JSON:", error);
-    return [];
-  }
+async function getFromLocalJSON(): Promise<SongHistoryRecord[]> {
+  // The local store is single-machine, single-user. Return everything saved on
+  // this machine regardless of deviceId — the browser's deviceId changes when
+  // the dev-server port changes (localStorage is per-origin), and filtering by
+  // it would make saved songs vanish after a port change.
+  const history = await readLocalHistory();
+  return history
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 50);
 }
 
 export async function initHistoryTable() {
@@ -100,7 +113,7 @@ export async function getSongHistory(
 ): Promise<SongHistoryRecord[]> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    return getFromLocalJSON(deviceId);
+    return getFromLocalJSON();
   }
 
   const sql = createNeonClient();
