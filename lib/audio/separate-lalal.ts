@@ -80,31 +80,24 @@ async function downloadTo(url: string, destPath: string): Promise<void> {
 }
 
 export async function separateVocalsLalal(
-  fileBuffer: Buffer | null,
-  filename: string | null,
-  existingSourceId?: string | null,
+  fileBuffer: Buffer,
+  filename: string,
 ): Promise<SeparationResult> {
   const jobId = randomUUID();
   try {
     await mkdir(TEMP_DIR, { recursive: true });
     await mkdir(PUBLIC_OUTPUT_DIR, { recursive: true });
 
-    let sourceId = existingSourceId;
-    if (!sourceId) {
-      if (!fileBuffer || !filename) {
-        return { success: false, error: "No file buffer or source id provided." };
-      }
-      // 1) Upload the audio binary → source id
-      const upload = await lalalFetch<{ id: string }>("/upload/", {
-        method: "POST",
-        headers: {
-          "Content-Disposition": `attachment; filename="${filename}"`,
-          "Content-Type": "application/octet-stream",
-        },
-        body: new Uint8Array(fileBuffer),
-      });
-      sourceId = upload.id;
-    }
+    // 1) Upload the audio binary → source id
+    const upload = await lalalFetch<{ id: string }>("/upload/", {
+      method: "POST",
+      headers: {
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Type": "application/octet-stream",
+      },
+      body: new Uint8Array(fileBuffer),
+    });
+    const sourceId = upload.id;
 
     // 2) Start a vocals split (also yields the "back" instrumental)
     const split = await lalalFetch<{ task_id: string }>("/split/stem_separator/", {
